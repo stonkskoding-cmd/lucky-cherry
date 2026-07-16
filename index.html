@@ -55,16 +55,23 @@
     background-image: repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 3px); }
 
   /* ---------- App frame (phone-shaped, centered on desktop) ---------- */
+  /* The Telegram SDK maintains --tg-viewport-stable-height on <html> and keeps
+     it in sync itself; 100dvh is the fallback when we run outside Telegram. */
   .frame {
     position: relative; z-index: 2;
-    width: 100%; max-width: 440px; height: 100dvh; margin: 0 auto;
+    width: 100%; max-width: 440px; margin: 0 auto;
+    height: var(--tg-viewport-stable-height, 100dvh);
     display: flex; flex-direction: column;
   }
+  /* The centered phone-shaped mock is for standalone desktop browsing only.
+     Inside Telegram the app fills its host viewport edge to edge at any width,
+     so this whole block is scoped away from .tg rather than overridden later. */
   @media (min-width: 480px) {
-    body { display: flex; align-items: center; justify-content: center; padding: 18px; }
-    .frame { height: min(880px, 96dvh); border-radius: 30px; overflow: hidden;
+    body:not(.tg) { display: flex; align-items: center; justify-content: center; padding: 18px; }
+    body:not(.tg) .frame { height: min(880px, 96dvh); border-radius: 30px; overflow: hidden;
       box-shadow: 0 40px 100px -20px rgba(0,0,0,0.8), inset 0 0 0 1px rgba(255,255,255,0.06); }
   }
+  body.tg .frame { max-width: none; }
 
   /* ---------- Glass utility ---------- */
   .glass {
@@ -353,7 +360,14 @@
   }
 
   /* ===== EMBEDDED ROULETTE (scoped) ===== */
-  #rouletteGame { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; }
+  /* The roulette was lifted out of a standalone page into this shell, so the
+     `#rouletteGame body` rules below it never match (there is no <body> here).
+     The layout they were meant to provide is applied to #rouletteGame itself. */
+  #rouletteGame {
+    position:absolute; inset:0; overflow-y:auto; overflow-x:hidden;
+    display: flex; align-items: center; justify-content: center;
+    padding: 14px 12px;
+  }
 #rouletteGame{
     --bg: #12121a;
     --bg-elevated: #191924;
@@ -375,17 +389,12 @@
     --sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 #rouletteGame *{ box-sizing: border-box; }
-#rouletteGame html, #rouletteGame body{ height: 100%; }
-#rouletteGame body{
-    margin: 0;
+#rouletteGame{
     background: var(--bg);
     color: var(--text);
     font-family: var(--sans);
-    min-height: 100vh;
-    display: flex; align-items: center; justify-content: center;
-    padding: 14px 12px;
-    overflow-x: hidden;
   }
+#rouletteGame .app{ margin: auto; }
 #rouletteGame .ambient-bg{ position: fixed; inset: 0; z-index: 0; overflow: hidden; background: radial-gradient(ellipse at 50% -10%, #23233a 0%, var(--bg) 55%); }
 #rouletteGame .ambient-bg .orb{ position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.32; transition: background 0.7s ease; }
 #rouletteGame .ambient-bg .orb1{ width: 320px; height: 320px; top: -70px; left: -70px; background: radial-gradient(circle, var(--accent, #d4a24c), transparent 70%); animation: driftA 19s ease-in-out infinite; }
@@ -1345,6 +1354,40 @@
   // ============================================================
   //  INIT
   // ============================================================
+  function initTelegram(){
+    const wa = window.Telegram && window.Telegram.WebApp;
+    // The SDK defines WebApp even in a plain browser, where it reports
+    // platform 'unknown' — that, not the object's existence, is the real gate.
+    if (!wa || wa.platform === 'unknown') return;  // keep the dvh fallback
+    document.body.classList.add('tg');    // full-bleed, no desktop phone frame
+
+    const supports = (v) => { try { return wa.isVersionAtLeast(v); } catch(e){ return false; } };
+
+    try { wa.ready(); } catch(e){}
+    try { wa.expand(); } catch(e){}
+    // Match the chrome to the app background instead of a default light bar.
+    if (supports('6.1')) {
+      try { wa.setHeaderColor('#08060f'); wa.setBackgroundColor('#08060f'); } catch(e){}
+    }
+    // Without this, scrolling the shell drags the mini app closed.
+    if (supports('7.7')) {
+      try { wa.disableVerticalSwipes(); } catch(e){}
+    }
+
+    // Some clients open collapsed and only settle after the first viewport
+    // event; re-expanding there is what keeps it full-height.
+    try {
+      wa.onEvent('viewportChanged', (e) => { if (!wa.isExpanded) { try { wa.expand(); } catch(_){} } });
+    } catch(e){}
+
+    // A verified Telegram user is already identified; don't ask them to log in.
+    // NOTE: initDataUnsafe is display-only and trusted here purely because this
+    // build is a demo. Anything money-related must verify initData server-side.
+    if (detectTelegram()) {
+      try { window.loginTelegram(); } catch(e){}
+    }
+  }
+
   function init(){
     setBalance(state.balance);
     renderGameGrid();
@@ -1353,10 +1396,7 @@
     renderStats();
     renderDaily();
     renderFaq();
-    // auto-detect Telegram and greet, otherwise show onboarding
-    if (detectTelegram()){
-      try { window.Telegram.WebApp.ready(); window.Telegram.WebApp.expand(); } catch(e){}
-    }
+    initTelegram();
   }
   init();
 
