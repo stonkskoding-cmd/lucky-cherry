@@ -362,13 +362,92 @@
     * { animation-duration: 0.001ms !important; transition-duration: 0.08s !important; }
   }
 
+  /* ===== CRASH (scoped) ===== */
+  #crashGame{
+    position:absolute; inset:0; overflow:hidden;
+    align-items: stretch; justify-content: center;
+    padding: 8px 10px 10px;
+    background: linear-gradient(180deg, #0b1020, #12121a 60%);
+    color: #f4f2ff; font-family: var(--sans);
+    --panel: #1e1e2c; --panel-border: #2c2c3d;
+    --gold: #d4a24c; --gold-bright: #f0c674;
+    --text-dim: #a29fc0;
+  }
+  #crashGame .crash-app{ width: 100%; max-width: 520px; margin: 0 auto; height: 100%;
+    display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
+  #crashGame .crash-app > *{ flex: 0 0 auto; }
+
+  #crashGame .crash-history{ display: flex; gap: 6px; overflow-x: auto; min-height: 26px; align-items: center;
+    padding: 0 2px 4px; scrollbar-width: none; }
+  #crashGame .crash-history::-webkit-scrollbar{ display: none; }
+  #crashGame .ch-chip{ flex: 0 0 auto; padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 700;
+    background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12); color: var(--text-dim); }
+  #crashGame .ch-chip.low{ color: #fb7185; border-color: rgba(251,113,133,0.4); }
+  #crashGame .ch-chip.mid{ color: #fbbf24; border-color: rgba(251,191,36,0.4); }
+  #crashGame .ch-chip.high{ color: #34d399; border-color: rgba(52,211,153,0.45); }
+  #crashGame .ch-empty{ font-size: 11px; color: #6b6890; }
+
+  #crashGame .crash-stage{ position: relative; border-radius: 16px; overflow: hidden;
+    background: radial-gradient(120% 90% at 50% 100%, #1b2340 0%, #0d1020 60%, #080a14 100%);
+    border: 1px solid #2c2c3d; }
+  #crashGame .crash-stage canvas{ display: block; width: 100%; height: 100%; }
+  #crashGame .crash-readout{ position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; pointer-events: none; text-align: center; }
+  #crashGame .cr-mult{ font-family: var(--serif, Georgia, serif); font-weight: 700; font-size: 44px; line-height: 1;
+    color: #fff8e6; text-shadow: 0 0 18px rgba(240,198,116,0.55), 0 2px 10px rgba(0,0,0,0.6);
+    font-variant-numeric: tabular-nums; }
+  #crashGame .cr-mult.bust{ color: #fb5b6b; text-shadow: 0 0 20px rgba(251,91,107,0.7); }
+  #crashGame .cr-mult.won{ color: #34d399; text-shadow: 0 0 20px rgba(52,211,153,0.7); }
+  #crashGame .cr-note{ margin-top: 6px; font-size: 12px; font-weight: 600; color: var(--text-dim); }
+
+  #crashGame .crash-cta{
+    width: 100%; max-width: 260px; margin: 0 auto; padding: 13px 0;
+    border-radius: 12px; border: none; cursor: pointer;
+    background: radial-gradient(circle at 35% 30%, var(--gold-bright), var(--gold) 60%, #8a6a2e 100%);
+    color: #241a05; font-family: var(--serif, Georgia, serif); font-weight: 700; font-size: 15px; letter-spacing: 0.03em;
+    box-shadow: 0 6px 16px -4px rgba(212,162,76,0.5);
+    transition: transform 0.12s ease, opacity 0.15s ease;
+  }
+  #crashGame .crash-cta:active{ transform: scale(0.97); }
+  #crashGame .crash-cta.disabled{ opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+  #crashGame .crash-cta.cashout{
+    background: radial-gradient(circle at 35% 30%, #6ee7b7, #10b981 60%, #065f46 100%);
+    color: #04231a; box-shadow: 0 6px 18px -4px rgba(16,185,129,0.6);
+  }
+  #crashGame .panel{ width: 100%; background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 16px; padding: 10px 12px; }
+  #crashGame .chip-row-wrap{ display: flex; align-items: center; gap: 6px; }
+  #crashGame .chip-row{ display: flex; align-items: center; gap: 6px; padding: 4px 2px 5px;
+    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; flex: 1 1 auto; }
+  #crashGame .chip-row::-webkit-scrollbar{ display: none; }
+  #crashGame .chip-scroll-arrow{ flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%;
+    background: none; border: 1px solid var(--panel-border); color: var(--text-dim); cursor: pointer;
+    display: grid; place-items: center; font-size: 12px; }
+  #crashGame .bet-total{ display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim);
+    border-top: 1px solid var(--panel-border); padding-top: 7px; margin-top: 7px; }
+  #crashGame .bet-total b{ margin-left: auto; color: var(--gold-bright); font-size: 13px; }
+  #crashGame .chip-round{
+    flex: 0 0 auto; width: 46px; height: 46px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--serif, Georgia, serif); font-weight: 700; font-size: 12px; color: #fff;
+    border: 3px dashed rgba(255,255,255,0.5);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.45), inset 0 2px 5px rgba(255,255,255,0.18);
+    cursor: pointer; transition: transform 0.22s cubic-bezier(.2,1.6,.4,1);
+  }
+  #crashGame .chip-round.active{ transform: translateY(-6px) scale(1.08); outline: 2px solid var(--gold-bright); outline-offset: 1px; }
+  #crashGame .chip-round:disabled{ opacity: 0.45; cursor: not-allowed; }
+
   /* ===== EMBEDDED ROULETTE (scoped) ===== */
   /* The roulette was lifted out of a standalone page into this shell, so the
      `#rouletteGame body` rules below it never match (there is no <body> here).
      The layout they were meant to provide is applied to #rouletteGame itself. */
+  /* One host per game inside .game-frame; only the active one is laid out, so
+     a hidden game measures 0 and knows to skip fitting itself. */
+  .game-host { display: none; }
+  .game-host.active { display: flex; }
   #rouletteGame {
     position:absolute; inset:0; overflow:hidden;
-    display: flex; align-items: stretch; justify-content: center;
+    align-items: stretch; justify-content: center;
     padding: 8px 10px 10px;
   }
 #rouletteGame{
@@ -925,7 +1004,7 @@
       <div class="balance-chip glass"><span>🍒</span><span class="val" id="gameBalance">1 000</span></div>
     </div>
     <div class="game-frame" style="flex:1; overflow:hidden; position:relative;">
-      <div id="rouletteGame">
+      <div id="rouletteGame" class="game-host active" data-stop="">
 
 <!-- Lost when the roulette was lifted out of its standalone page: the CSS for
      it survived but the element did not, so pulseBackground() dereferenced
@@ -1001,6 +1080,35 @@
 </div>
 
 </div>
+
+      <!-- ===== CRASH ===== -->
+      <div id="crashGame" class="game-host" data-stop="__CRASH_STOP__">
+        <div class="crash-app">
+          <div class="crash-history" id="crashHistory"></div>
+
+          <div class="crash-stage" id="crashStage">
+            <canvas id="crashCanvas"></canvas>
+            <div class="crash-readout" id="crashReadout">
+              <div class="cr-mult" id="crMult">1.00×</div>
+              <div class="cr-note" id="crNote">Сделай ставку</div>
+            </div>
+          </div>
+
+          <button class="crash-cta" id="crashCta">СТАВКА</button>
+
+          <div class="panel">
+            <div class="chip-row-wrap">
+              <button class="chip-scroll-arrow" id="crashChipLeft">‹</button>
+              <div class="chip-row" id="crashChipRow"></div>
+              <button class="chip-scroll-arrow" id="crashChipRight">›</button>
+            </div>
+            <div class="bet-total">
+              <span>Ставка</span>
+              <b id="crashBetAmt">0 🍒</b>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -1083,20 +1191,34 @@
   // ============================================================
   //  GAME VIEW (hosts the roulette in an iframe)
   // ============================================================
+  // Each live game is a host element inside .game-frame; only one is active.
+  // `resync` hands the game the current shell balance and lets it measure its
+  // layout, which it can only do once its host is actually visible.
   const GAMES = {
-    roulette: { title: 'Колесо Фортуны', src: 'wheel-of-fortune.html', live: true, art: 'art-cherry', emoji: '🍒', tag: 'Слот-буст' },
+    roulette: { title: 'Колесо Фортуны', live: true, host: 'rouletteGame', resync: '__ROULETTE_RESYNC__' },
+    crash:    { title: 'Crash',          live: true, host: 'crashGame',    resync: '__CRASH_RESYNC__' },
   };
 
   window.openGame = function(key){
     const g = GAMES[key];
     if (!g || !g.live) { toast('Игра скоро появится'); return; }
     $('gameTitle').textContent = g.title;
+
+    document.querySelectorAll('.game-host').forEach(h => h.classList.remove('active'));
+    const host = $(g.host);
+    if (host) host.classList.add('active');
+
     $('gameView').classList.add('open');
-    // re-sync the embedded roulette with the current shell balance
-    if (typeof window.__ROULETTE_RESYNC__ === 'function') window.__ROULETTE_RESYNC__();
+    const fn = window[g.resync];
+    if (typeof fn === 'function') fn();
   };
   window.closeGame = function(){
     $('gameView').classList.remove('open');
+    // Let a game stop its round loop rather than run on behind a closed view.
+    document.querySelectorAll('.game-host').forEach(h => {
+      const stop = window[h.dataset.stop || ''];
+      if (typeof stop === 'function') stop();
+    });
   };
 
   // ---- Bridge the embedded roulette to the shell state (single-file) ----
@@ -1116,8 +1238,8 @@
   function renderGameGrid(){
     const cards = [
       { key:'roulette', name:'Колесо Фортуны', sub:'Слот-буст ×100', art:'art-cherry', emoji:'🍒', live:true },
+      { key:'crash',    name:'Crash',          sub:'Успей забрать',  art:'art-crash',  emoji:'🚀', live:true },
       { key:'slots',    name:'Слоты',          sub:'Скоро',          art:'art-slots',  emoji:'🎰', live:false },
-      { key:'crash',    name:'Crash',          sub:'Скоро',          art:'art-crash',  emoji:'🚀', live:false },
       { key:'dice',     name:'Кости',          sub:'Скоро',          art:'art-dice',   emoji:'🎲', live:false },
       { key:'cards',    name:'Блэкджек',       sub:'Скоро',          art:'art-cards',  emoji:'🃏', live:false },
       { key:'mines',    name:'Мины',           sub:'Скоро',          art:'art-mines',  emoji:'💣', live:false },
@@ -1406,6 +1528,343 @@
   }
   init();
 
+})();
+</script>
+
+<script>
+/* ===== EMBEDDED CRASH LOGIC ===== */
+(function(){
+  const host = document.getElementById('crashGame');
+  if (!host) return;
+
+  const stage    = document.getElementById('crashStage');
+  const canvas   = document.getElementById('crashCanvas');
+  const multEl   = document.getElementById('crMult');
+  const noteEl   = document.getElementById('crNote');
+  const ctaEl    = document.getElementById('crashCta');
+  const chipRow  = document.getElementById('crashChipRow');
+  const betAmtEl = document.getElementById('crashBetAmt');
+  const histEl   = document.getElementById('crashHistory');
+  const arrowL   = document.getElementById('crashChipLeft');
+  const arrowR   = document.getElementById('crashChipRight');
+  const ctx      = canvas.getContext('2d');
+
+  const DENOMS = [10, 20, 30, 50, 100, 250, 500, 1000, 5000];
+  const DENOM_COLORS = {
+    10: '#8a8f99', 20: '#c9564f', 30: '#4f8ed9', 50: '#4fbf7a',
+    100: '#2b2b33', 250: '#b5467a', 500: '#7a4fb5', 1000: '#d4a24c', 5000: '#33c2c9'
+  };
+  const GROWTH = 0.23;          // multiplier = e^(GROWTH * seconds): ~2x at 3s
+  const HOUSE_EDGE = 0.04;      // share of rounds that bust instantly at 1.00
+  const MAX_MULT = 100;
+
+  let balance = 1000;
+  let denomIndex = 0;
+  let stake = 0;
+  let phase = 'idle';           // idle | flying | over
+  let crashPoint = 1;
+  let startedAt = 0;
+  let cashedAt = 0;
+  let rafId = null;
+  let bustTimer = null;
+  let history = [];
+
+  function fmt(n){ return Math.round(n).toLocaleString('ru-RU'); }
+  function stakeValue(){ return DENOMS[denomIndex]; }
+
+  function reportBalance(){
+    if (window.__SHELL__ && typeof window.__SHELL__.setBalance === 'function') {
+      window.__SHELL__.setBalance(balance);
+    }
+  }
+
+  // Inverse of a uniform draw, which gives the familiar long tail: half the
+  // rounds bust under ~2x. The edge is taken as a flat share of instant busts
+  // rather than by shaving the curve, so a shown multiplier always pays in full.
+  function pickCrashPoint(){
+    if (Math.random() < HOUSE_EDGE) return 1.00;
+    const u = Math.random();
+    return Math.min(MAX_MULT, Math.max(1.01, Math.floor(100 / (1 - u)) / 100));
+  }
+
+  function multAt(ms){ return Math.exp(GROWTH * (ms / 1000)); }
+  function msFor(mult){ return (Math.log(mult) / GROWTH) * 1000; }
+
+  function sizeCanvas(){
+    const r = stage.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width  = Math.round(r.width * dpr);
+    canvas.height = Math.round(r.height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function draw(mult){
+    const r = stage.getBoundingClientRect();
+    const W = r.width, H = r.height;
+    if (!W || !H) return;
+    ctx.clearRect(0, 0, W, H);
+
+    const padL = 8, padB = 10, padT = 10, padR = 8;
+    const plotW = W - padL - padR, plotH = H - padT - padB;
+
+    // Both axes rescale as the curve grows, so it never leaves the box.
+    const spanMs = Math.max(1200, msFor(Math.max(mult, 1.35)));
+    const spanM  = Math.max(1.35, mult);
+
+    const xOf = (ms) => padL + (ms / spanMs) * plotW;
+    const yOf = (m)  => padT + plotH - ((m - 1) / (spanM - 1 || 1)) * plotH;
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) {
+      const y = padT + (plotH / 4) * i;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+    }
+
+    const steps = 48;
+    const endMs = msFor(mult);
+    const bust = phase === 'over' && !cashedAt;
+    const line = bust ? '#fb5b6b' : (cashedAt ? '#34d399' : '#f0c674');
+
+    ctx.beginPath();
+    ctx.moveTo(xOf(0), yOf(1));
+    for (let i = 1; i <= steps; i++) {
+      const ms = (endMs / steps) * i;
+      ctx.lineTo(xOf(ms), yOf(multAt(ms)));
+    }
+
+    const grad = ctx.createLinearGradient(0, padT, 0, H);
+    grad.addColorStop(0, line + '55');
+    grad.addColorStop(1, line + '00');
+    ctx.save();
+    ctx.lineTo(xOf(endMs), yOf(1));
+    ctx.lineTo(xOf(0), yOf(1));
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+    ctx.restore();
+
+    ctx.beginPath();
+    ctx.moveTo(xOf(0), yOf(1));
+    for (let i = 1; i <= steps; i++) {
+      const ms = (endMs / steps) * i;
+      ctx.lineTo(xOf(ms), yOf(multAt(ms)));
+    }
+    ctx.strokeStyle = line;
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = line;
+    ctx.shadowBlur = 10;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+
+    const hx = xOf(endMs), hy = yOf(mult);
+    ctx.beginPath();
+    ctx.arc(hx, hy, bust ? 6 : 5, 0, Math.PI * 2);
+    ctx.fillStyle = bust ? '#fb5b6b' : '#fff8e6';
+    ctx.fill();
+  }
+
+  function renderChips(){
+    chipRow.innerHTML = '';
+    DENOMS.forEach((d, i) => {
+      const c = document.createElement('button');
+      c.className = 'chip-round' + (i === denomIndex ? ' active' : '');
+      c.style.background = `radial-gradient(circle at 35% 30%, ${DENOM_COLORS[d]}, ${DENOM_COLORS[d]} 70%, rgba(0,0,0,0.35))`;
+      c.textContent = fmt(d);
+      c.disabled = phase === 'flying';
+      c.addEventListener('click', () => {
+        if (phase === 'flying') return;
+        denomIndex = i;
+        renderChips();
+        refreshUI();
+      });
+      chipRow.appendChild(c);
+    });
+  }
+
+  function renderHistory(){
+    histEl.innerHTML = '';
+    if (!history.length) {
+      const e = document.createElement('span');
+      e.className = 'ch-empty';
+      e.textContent = 'История раундов появится здесь';
+      histEl.appendChild(e);
+      return;
+    }
+    history.forEach(v => {
+      const c = document.createElement('span');
+      c.className = 'ch-chip ' + (v < 2 ? 'low' : v < 10 ? 'mid' : 'high');
+      c.textContent = v.toFixed(2) + '×';
+      histEl.appendChild(c);
+    });
+  }
+
+  function refreshUI(){
+    betAmtEl.textContent = fmt(phase === 'idle' ? stakeValue() : stake) + ' 🍒';
+    if (phase === 'idle') {
+      ctaEl.textContent = 'СТАВКА ' + fmt(stakeValue());
+      ctaEl.classList.remove('cashout');
+      ctaEl.classList.toggle('disabled', stakeValue() > balance);
+    } else if (phase === 'flying') {
+      if (cashedAt) {
+        ctaEl.textContent = 'ЗАБРАЛ ×' + cashedAt.toFixed(2);
+        ctaEl.classList.remove('cashout');
+        ctaEl.classList.add('disabled');
+      } else {
+        ctaEl.classList.add('cashout');
+        ctaEl.classList.remove('disabled');
+      }
+    } else {
+      ctaEl.textContent = 'НОВЫЙ РАУНД';
+      ctaEl.classList.remove('cashout', 'disabled');
+    }
+  }
+
+  function endRound(){
+    if (phase !== 'flying') return;
+    phase = 'over';
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    if (bustTimer) { clearTimeout(bustTimer); bustTimer = null; }
+
+    multEl.textContent = crashPoint.toFixed(2) + '×';
+    multEl.classList.remove('won');
+    if (!cashedAt) {
+      multEl.classList.add('bust');
+      noteEl.textContent = 'Улетел. Ставка сгорела.';
+    } else {
+      noteEl.textContent = 'Забрал ' + fmt(stake * cashedAt) + ' 🍒';
+    }
+
+    history.unshift(crashPoint);
+    history = history.slice(0, 12);
+    renderHistory();
+    draw(crashPoint);
+
+    if (window.__SHELL__ && typeof window.__SHELL__.onSpin === 'function') {
+      window.__SHELL__.onSpin(!!cashedAt, cashedAt ? stake * cashedAt : 0);
+    }
+
+    renderChips();
+    refreshUI();
+  }
+
+  function frame(){
+    if (phase !== 'flying') return;
+    const elapsed = Date.now() - startedAt;
+    const m = Math.min(multAt(elapsed), crashPoint);
+    multEl.textContent = m.toFixed(2) + '×';
+    if (!cashedAt) noteEl.textContent = 'Забери до краша';
+    draw(m);
+    if (m >= crashPoint) { endRound(); return; }
+    rafId = requestAnimationFrame(frame);
+  }
+
+  function startRound(){
+    if (phase === 'flying') return;
+    stake = stakeValue();
+    if (stake > balance) { return; }
+
+    balance -= stake;
+    reportBalance();
+
+    phase = 'flying';
+    cashedAt = 0;
+    crashPoint = pickCrashPoint();
+    startedAt = Date.now();
+
+    multEl.classList.remove('bust', 'won');
+    multEl.textContent = '1.00×';
+    noteEl.textContent = 'Забери до краша';
+
+    sizeCanvas();
+    renderChips();
+    refreshUI();
+
+    // The bust is scheduled, not left to the frame loop: requestAnimationFrame
+    // stops firing when the mini app is backgrounded, and the round must still
+    // resolve rather than strand the controls the way the wheel used to.
+    if (bustTimer) clearTimeout(bustTimer);
+    bustTimer = setTimeout(endRound, msFor(crashPoint) + 60);
+
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(frame);
+  }
+
+  function cashOut(){
+    if (phase !== 'flying' || cashedAt) return;
+    const m = Math.min(multAt(Date.now() - startedAt), crashPoint);
+    if (m >= crashPoint) return;                 // already gone
+    cashedAt = m;
+    balance += stake * m;
+    reportBalance();
+    multEl.classList.add('won');
+    noteEl.textContent = 'Забрал ×' + m.toFixed(2);
+    refreshUI();
+  }
+
+  function resetRound(){
+    phase = 'idle';
+    cashedAt = 0;
+    multEl.classList.remove('bust', 'won');
+    multEl.textContent = '1.00×';
+    noteEl.textContent = 'Сделай ставку';
+    draw(1);
+    renderChips();
+    refreshUI();
+  }
+
+  ctaEl.addEventListener('click', () => {
+    if (phase === 'idle') startRound();
+    else if (phase === 'flying') cashOut();
+    else resetRound();
+  });
+  arrowL.addEventListener('click', () => chipRow.scrollBy({ left: -110, behavior: 'smooth' }));
+  arrowR.addEventListener('click', () => chipRow.scrollBy({ left: 110, behavior: 'smooth' }));
+
+  // Same rule as the wheel: the graph takes the height left over once the
+  // history strip, the CTA and the panel have claimed theirs.
+  function fitCrashLayout(){
+    if (!host.clientHeight) return;              // hidden host measures 0
+    const app = host.querySelector('.crash-app');
+    const gap = parseFloat(getComputedStyle(app).rowGap) || 0;
+    let used = gap * Math.max(0, app.children.length - 1);
+    for (const el of app.children) {
+      if (el === stage) continue;
+      used += el.getBoundingClientRect().height;
+    }
+    const cs = getComputedStyle(host);
+    const avail = host.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    stage.style.height = Math.max(160, Math.floor(avail - used)) + 'px';
+    sizeCanvas();
+    draw(phase === 'idle' ? 1 : Math.min(multAt(Date.now() - startedAt), crashPoint));
+  }
+
+  window.addEventListener('resize', fitCrashLayout);
+  window.addEventListener('orientationchange', fitCrashLayout);
+
+  // Leaving mid-flight must not leave a timer running against a closed view.
+  window.__CRASH_STOP__ = function(){
+    if (phase === 'flying') endRound();
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  };
+
+  window.__CRASH_RESYNC__ = function(){
+    if (window.__SHELL__ && typeof window.__SHELL__.getBalance === 'function') {
+      balance = window.__SHELL__.getBalance();
+    }
+    if (phase === 'over') resetRound();
+    renderChips();
+    renderHistory();
+    refreshUI();
+    fitCrashLayout();
+  };
+
+  renderChips();
+  renderHistory();
+  refreshUI();
+  resetRound();
 })();
 </script>
 
