@@ -350,8 +350,11 @@
     background: var(--bg-0); transform: translateX(100%); transition: transform 0.34s cubic-bezier(.2,.9,.3,1); }
   .game-view.open { transform: translateX(0); }
   .game-topbar { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: calc(env(safe-area-inset-top) + 12px) 16px 12px; }
-  .game-back { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font-size: 18px; cursor: pointer;
+  .game-back { height: 38px; padding: 0 12px 0 8px; border-radius: 12px; display: inline-flex; align-items: center; gap: 4px;
+    font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap;
     background: var(--glass); border: 1px solid var(--glass-border); color: var(--text); }
+  .game-back:active { background: var(--glass-strong); transform: scale(0.96); }
+  .game-back .gb-arrow { font-size: 20px; line-height: 1; margin-top: -2px; }
   .game-title { font-weight: 800; font-size: 16px; }
   .game-frame { flex: 1; border: none; width: 100%; background: var(--bg-0); }
 
@@ -364,9 +367,9 @@
      `#rouletteGame body` rules below it never match (there is no <body> here).
      The layout they were meant to provide is applied to #rouletteGame itself. */
   #rouletteGame {
-    position:absolute; inset:0; overflow-y:auto; overflow-x:hidden;
-    display: flex; align-items: center; justify-content: center;
-    padding: 14px 12px;
+    position:absolute; inset:0; overflow:hidden;
+    display: flex; align-items: stretch; justify-content: center;
+    padding: 8px 10px 10px;
   }
 #rouletteGame{
     --bg: #12121a;
@@ -394,7 +397,11 @@
     color: var(--text);
     font-family: var(--sans);
   }
-#rouletteGame .app{ margin: auto; }
+/* The game fills its frame exactly and never scrolls: every row keeps its
+   natural height and the wheel absorbs whatever is left, so fitGameLayout()
+   can measure the rows without the wheel skewing the result. */
+#rouletteGame .app{ height: 100%; justify-content: flex-start; gap: 8px; }
+#rouletteGame .app > *{ flex: 0 0 auto; }
 #rouletteGame .ambient-bg{ position: fixed; inset: 0; z-index: 0; overflow: hidden; background: radial-gradient(ellipse at 50% -10%, #23233a 0%, var(--bg) 55%); }
 #rouletteGame .ambient-bg .orb{ position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.32; transition: background 0.7s ease; }
 #rouletteGame .ambient-bg .orb1{ width: 320px; height: 320px; top: -70px; left: -70px; background: radial-gradient(circle, var(--accent, #d4a24c), transparent 70%); animation: driftA 19s ease-in-out infinite; }
@@ -441,11 +448,10 @@
     pointer-events: none; max-width: 90%; text-align: center;
   }
 #rouletteGame .boost-banner.show{ opacity: 1; transform: translateY(0); }
-/* The 360px floor of the old clamp() was wider than a 360px phone minus the
-   game's padding, so the wheel (and the slot overlay nested inside it) was
-   clipped by overflow-x:hidden with no way to scroll to it. Never exceed the
-   available width; 100% is what keeps it on screen. */
-#rouletteGame .wheel-stage{ position: relative; width: min(100%, 62vh, 560px); aspect-ratio: 1; display: flex; align-items: center; justify-content: center; margin-top: 4px; }
+/* Square, and never larger than the space actually left over after the strip,
+   the CTA and the betting panel have taken theirs. fitGameLayout() writes the
+   real size; these values only cover the first paint. */
+#rouletteGame .wheel-stage{ position: relative; flex: 0 0 auto; width: 280px; height: 280px; display: flex; align-items: center; justify-content: center; margin: 0 auto; }
 #rouletteGame .pointer{
     position: absolute; top: -10px; left: 50%; width: 52px; height: 68px;
     transform: translateX(-50%); transform-origin: 50% 14px; z-index: 5;
@@ -597,20 +603,18 @@
   }
 #rouletteGame .spin-cta:active{ transform: scale(0.97); }
 #rouletteGame .spin-cta.disabled{ opacity: 0.45; cursor: not-allowed; box-shadow: none; }
-#rouletteGame .wheel-actions{ margin-top: 6px; display: flex; gap: 8px; }
 #rouletteGame .ghost-btn{
     background: none; border: 1px solid var(--panel-border); color: var(--text-dim);
-    border-radius: 8px; padding: 5px 11px; font-size: 11px; cursor: pointer;
+    border-radius: 8px; width: 26px; height: 26px; font-size: 14px; line-height: 1; cursor: pointer;
+    display: grid; place-items: center; flex: 0 0 auto;
     font-family: var(--sans); transition: border-color 0.15s ease, color 0.15s ease;
   }
 #rouletteGame .ghost-btn:hover:not(:disabled){ border-color: var(--gold); color: var(--gold-bright); }
 #rouletteGame .ghost-btn:disabled{ opacity: 0.4; cursor: not-allowed; }
 #rouletteGame /* ---- Panel (now sits below the wheel) ---- */
-  .panel{ width: 100%; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 18px; padding: 22px; margin-top: 6px; }
-#rouletteGame .panel h2{ font-family: var(--serif); font-size: 18px; margin: 0 0 4px; text-align: center; }
-#rouletteGame .panel .sub{ font-size: 12.5px; color: var(--text-dim); margin: 0 0 14px; line-height: 1.45; text-align: center; }
-#rouletteGame .bet-grid{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
-#rouletteGame .bet-split{ display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .panel{ width: 100%; flex: 0 0 auto; background: var(--panel); border: 1px solid var(--panel-border); border-radius: 16px; padding: 10px 12px; }
+#rouletteGame .bet-grid{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+#rouletteGame .bet-split{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 #rouletteGame .bet-quad{ position: relative; }
 #rouletteGame .bet-all-center{
     position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
@@ -626,8 +630,8 @@
 #rouletteGame .bet-all-center:disabled{ opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 #rouletteGame .bet-btn{
     position: relative;
-    display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 6px;
-    padding: 14px 6px 11px; border-radius: 12px; border: none;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px;
+    padding: 8px 4px 7px; border-radius: 11px; border: none;
     cursor: pointer; color: #fff; overflow: visible;
     touch-action: none;
     box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14), 0 4px 10px rgba(0,0,0,0.35);
@@ -655,14 +659,15 @@
     border: 2px solid rgba(255,255,255,0.6);
     box-shadow: 0 3px 8px rgba(0,0,0,0.5);
   }
-#rouletteGame .bet-total{ display: flex; justify-content: space-between; font-size: 12px; color: var(--text-dim); border-top: 1px solid var(--panel-border); padding-top: 9px; margin-top: 9px; }
+#rouletteGame .bet-total{ display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); border-top: 1px solid var(--panel-border); padding-top: 7px; margin-top: 7px; }
+#rouletteGame .bet-total b{ margin-left: auto; color: var(--gold-bright); font-size: 13px; }
 #rouletteGame .bet-total b{ color: var(--text); }
 #rouletteGame .slot-note{ margin-top: 10px; border-top: 1px solid var(--panel-border); padding-top: 9px; font-size: 10px; color: var(--text-dim); line-height: 1.4; }
 #rouletteGame .slot-note b{ color: var(--gold); }
 #rouletteGame .history-strip{
-    display: flex; gap: 7px; overflow-x: auto; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
-    padding: 3px 2px 8px; margin-bottom: 2px; scroll-snap-type: x proximity;
-    flex-wrap: nowrap;
+    display: flex; gap: 6px; overflow-x: auto; width: 100%; max-width: 100%; min-width: 0; box-sizing: border-box;
+    padding: 0 2px 4px; margin-bottom: 0; scroll-snap-type: x proximity;
+    flex-wrap: nowrap; min-height: 26px; align-items: center;
   }
 #rouletteGame .history-strip::-webkit-scrollbar{ height: 3px; }
 #rouletteGame .history-chip{
@@ -686,7 +691,7 @@
 #rouletteGame .denom-label{ font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); margin: 4px 0 0; font-weight: 600; text-align: center; }
 #rouletteGame .chip-row-wrap{ display: flex; align-items: center; gap: 6px; }
 #rouletteGame .chip-row{
-    display: flex; align-items: center; gap: 7px; padding: 10px 2px 14px;
+    display: flex; align-items: center; gap: 6px; padding: 4px 2px 5px;
     flex-wrap: nowrap; overflow-x: auto; scroll-behavior: smooth;
     scrollbar-width: none; flex: 1 1 auto;
   }
@@ -914,7 +919,7 @@
   <!-- ===== GAME VIEW ===== -->
   <div class="game-view" id="gameView">
     <div class="game-topbar">
-      <div class="game-back" onclick="closeGame()">‹</div>
+      <button class="game-back" onclick="closeGame()" aria-label="Выйти в меню"><span class="gb-arrow">‹</span> Выйти</button>
       <div class="game-title" id="gameTitle">Колесо Фортуны</div>
       <div class="spacer" style="flex:1"></div>
       <div class="balance-chip glass"><span>🍒</span><span class="val" id="gameBalance">1 000</span></div>
@@ -932,11 +937,8 @@
 </div>
 
 <div class="app">
-  <p class="eyebrow">Испытай удачу</p>
-  <h1>Колесо Фортуны</h1>
-  <p class="subtitle">8 позиций · слот-буст с шансом 1 к 3</p>
-
-  <div class="balance-pill" id="balancePill"><span class="cherry">🍒</span> Баланс: <span class="amt" id="balanceAmt">1000</span></div>
+  <!-- The title and balance live in the game topbar; repeating them here is
+       what pushed the wheel and the betting panel off a phone screen. -->
   <div class="boost-banner" id="boostBanner"></div>
 
   <div class="history-strip" id="historyStrip"></div>
@@ -972,14 +974,7 @@
 
   <button class="spin-cta" id="spinBtn">КРУТИ КОЛЕСО</button>
 
-  <div class="wheel-actions">
-    <button class="ghost-btn" id="reshuffleBtn">перемешать колесо</button>
-  </div>
-
   <div class="panel">
-    <h2>Ставки на 8 позиций</h2>
-    <p class="sub">Тапни по позиции — фишка ляжет на неё. Потяни вниз, чтобы убрать ставку.</p>
-
     <div class="bet-split">
       <div class="bet-quad">
         <div id="multRow" class="bet-grid"></div>
@@ -991,7 +986,6 @@
       </div>
     </div>
 
-    <p class="denom-label">Номинал фишки</p>
     <div class="chip-row-wrap">
       <button class="chip-scroll-arrow" id="chipScrollLeft">‹</button>
       <div class="chip-row" id="chipRow"></div>
@@ -999,11 +993,10 @@
     </div>
 
     <div class="bet-total">
-      <span>Общая ставка</span>
+      <span>Ставка</span>
       <b id="totalBetAmt">0 🍒</b>
+      <button class="ghost-btn" id="reshuffleBtn" title="Перемешать колесо">↻</button>
     </div>
-
-    <p class="slot-note"><b>Слот-буст (1 к 3):</b> вместо колеса на миг появляется автомат — выбирает позицию и множитель ×2…×100. Для ×1 множитель прибавляется, для остальных — умножается, и колесо крутится усиленным.</p>
   </div>
 </div>
 
@@ -1497,8 +1490,7 @@
   const spinBtn = document.getElementById('spinBtn');
   const wheelRim = document.getElementById('wheelRim');
   const wheelStage = document.getElementById('wheelStage');
-  const balancePill = document.getElementById('balancePill');
-  const balanceAmt = document.getElementById('balanceAmt');
+  const balanceAmt = document.getElementById('balanceAmt'); // absent by design; guarded in renderBalance
   const boostBanner = document.getElementById('boostBanner');
   const multRow = document.getElementById('multRow');
   const bonusRow = document.getElementById('bonusRow');
@@ -1520,7 +1512,8 @@
   const slotSub = document.getElementById('slotSub');
 
   function totalBet(){ return Object.values(bets).reduce((a,b) => a+b, 0); }
-  function renderBalance(){ balanceAmt.textContent = balance; reportBalance(); }
+  // The topbar chip is the balance readout now; the in-game pill is gone.
+  function renderBalance(){ if (balanceAmt) balanceAmt.textContent = balance; reportBalance(); }
 
   function renderBetGroup(container, keys){
     container.innerHTML = '';
@@ -2091,8 +2084,7 @@
       wheelStage.appendChild(p);
       setTimeout(() => p.remove(), 1150);
     }
-    balancePill.classList.add('pulse');
-    setTimeout(() => balancePill.classList.remove('pulse'), 700);
+    // The in-game balance pill is gone; the topbar chip is the readout now.
   }
 
   function playLandingAnimation(){
@@ -2221,10 +2213,42 @@
   spinBtn.addEventListener('click', startSpinFlow);
   canvas.style.transformOrigin = '50% 50%';
 
+  // Everything must be reachable without scrolling, so the wheel takes exactly
+  // the height left after the strip, the CTA and the panel have claimed theirs.
+  // Measured rather than guessed with vh: the game frame sits under a topbar,
+  // so it is never the full viewport.
+  function fitGameLayout(){
+    const host = document.getElementById('rouletteGame');
+    const app = host && host.querySelector('.app');
+    if (!app || !host.clientHeight) return;      // closed view measures 0
+
+    // Measure the fixed rows without touching the wheel first: collapsing it and
+    // re-reading in the same tick depends on a synchronous reflow landing, and
+    // every row here is flex:0 0 auto, so none of them depend on the wheel.
+    const gap = parseFloat(getComputedStyle(app).rowGap) || 0;
+    let used = gap * Math.max(0, app.children.length - 1);
+    for (const el of app.children) {
+      if (el === wheelStage) continue;
+      used += el.getBoundingClientRect().height;
+    }
+
+    const hostCS = getComputedStyle(host);
+    const avail = host.clientHeight
+      - parseFloat(hostCS.paddingTop) - parseFloat(hostCS.paddingBottom);
+
+    const size = Math.max(140, Math.min(app.clientWidth, Math.floor(avail - used)));
+    wheelStage.style.width = size + 'px';
+    wheelStage.style.height = size + 'px';
+  }
+
   drawWheel();
   renderBalance();
   refreshBetUI();
   renderHistoryStrip();
+  fitGameLayout();
+
+  window.addEventListener('resize', fitGameLayout);
+  window.addEventListener('orientationchange', fitGameLayout);
 
   // Allow the shell to re-sync balance into the game when it (re)opens the view.
   window.__ROULETTE_RESYNC__ = function(){
@@ -2233,6 +2257,7 @@
       renderBalance();
       refreshBetUI();
     }
+    fitGameLayout();   // the view has real dimensions only once it is open
   };
 
 })();
