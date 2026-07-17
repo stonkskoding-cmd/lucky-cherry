@@ -44,13 +44,25 @@
   /* ---------- Ambient animated background ---------- */
   .bg-fx { position: fixed; inset: 0; z-index: 0; overflow: hidden; background:
       radial-gradient(120% 80% at 50% -10%, #1b1140 0%, var(--bg-1) 45%, var(--bg-0) 100%); }
-  .bg-fx .blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.5; mix-blend-mode: screen; }
+  /* No mix-blend-mode: it forces the compositor to re-blend this blurred layer
+     against its backdrop every frame and defeats caching of the blur texture.
+     Plain opacity looks near-identical and lets the blur rasterise once. */
+  .bg-fx .blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: 0.42; }
   .b1 { width: 340px; height: 340px; top: -80px; left: -90px; background: var(--neon-purple); animation: float1 20s ease-in-out infinite; }
   .b2 { width: 300px; height: 300px; bottom: -70px; right: -80px; background: var(--neon-pink); animation: float2 24s ease-in-out infinite; }
   .b3 { width: 260px; height: 260px; top: 45%; left: 55%; background: var(--neon-cyan); opacity: 0.35; animation: float3 28s ease-in-out infinite; }
   @keyframes float1 { 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(70px,50px) scale(1.15);} }
   @keyframes float2 { 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(-60px,-40px) scale(1.1);} }
   @keyframes float3 { 0%,100%{transform:translate(0,0) scale(1);} 50%{transform:translate(-50px,60px) scale(1.2);} }
+
+  /* An open game covers the shell with an opaque view, so every pixel of this
+     work is invisible — but animated blur keeps recomputing regardless, and on
+     Android that is what starves the wheel. Freeze the blobs (a paused blur
+     rasterises once), stop the ticker, and skip rendering the covered screens
+     entirely. */
+  body.game-open .bg-fx .blob,
+  body.game-open .ticker-track { animation-play-state: paused; }
+  body.game-open .screens { content-visibility: hidden; }
   .bg-grain { position: fixed; inset: 0; z-index: 1; pointer-events: none; opacity: 0.04;
     background-image: repeating-linear-gradient(0deg, #fff 0 1px, transparent 1px 3px); }
 
@@ -598,7 +610,11 @@
    over the static topbar, hiding the exit button and the balance. It must stay
    inside #rouletteGame, which is the game area below the topbar. */
 #rouletteGame .ambient-bg{ position: absolute; inset: 0; z-index: 0; overflow: hidden; background: radial-gradient(ellipse at 50% -10%, #23233a 0%, var(--bg) 55%); pointer-events: none; }
-#rouletteGame .ambient-bg .orb{ position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.32; transition: background 0.7s ease; }
+#rouletteGame .ambient-bg .orb{ position: absolute; border-radius: 50%; filter: blur(48px); opacity: 0.32; transition: background 0.7s ease; }
+/* Animating a blurred element re-rasterises the blur every frame. During the
+   spin the wheel needs the GPU, and nobody is watching the orbs drift, so the
+   drift stops while it matters and resumes when the round settles. */
+#rouletteGame.spinning .ambient-bg .orb{ animation-play-state: paused; }
 #rouletteGame .ambient-bg .orb1{ width: 320px; height: 320px; top: -70px; left: -70px; background: radial-gradient(circle, var(--accent, #d4a24c), transparent 70%); animation: driftA 19s ease-in-out infinite; }
 #rouletteGame .ambient-bg .orb2{ width: 280px; height: 280px; bottom: -60px; right: -60px; background: radial-gradient(circle, var(--accent2, #7a4fb5), transparent 70%); animation: driftB 23s ease-in-out infinite; }
 #rouletteGame .ambient-bg .orb3{ width: 220px; height: 220px; top: 42%; left: 58%; background: radial-gradient(circle, var(--accent3, #2e7d6b), transparent 70%); animation: driftC 27s ease-in-out infinite; }
@@ -658,7 +674,12 @@
     position: absolute; top: -10px; left: 50%; width: 52px; height: 68px;
     transform: translateX(-50%); transform-origin: 50% 14px; z-index: 5;
     filter: drop-shadow(0 5px 10px rgba(0,0,0,0.5));
+    will-change: transform;
   }
+/* The kick back to rest is a CSS transition now: the frame loop used to arm a
+   setTimeout on every segment tick, which is dozens of timers per spin. */
+#rouletteGame .pointer.tick{ transform: translateX(-50%) rotate(-8deg); }
+#rouletteGame .pointer{ transition: transform 90ms ease-out; }
 #rouletteGame .pointer svg{ width: 100%; height: 100%; display:block; }
 #rouletteGame .wheel-rim{
     position: absolute; inset: 0; border-radius: 50%;
@@ -673,7 +694,11 @@
     100% { box-shadow: 0 16px 40px -10px rgba(0,0,0,0.65), inset 0 0 0 2px rgba(212,162,76,0.35), 0 0 0 rgba(240,198,116,0); }
   }
 #rouletteGame .wheel-rim.landed{ animation: wheelGlow 0.9s ease; }
-#rouletteGame canvas#wheel{ display: block; width: 100%; height: 100%; border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(0,0,0,0.4); }
+/* The canvas is transformed every frame; keep it on its own compositor layer so
+   spinning it never repaints the rim, the pointer or the panel underneath. */
+#rouletteGame canvas#wheel{ display: block; width: 100%; height: 100%; border-radius: 50%;
+    box-shadow: inset 0 0 0 2px rgba(0,0,0,0.4);
+    will-change: transform; transform: translateZ(0); backface-visibility: hidden; }
 #rouletteGame /* ---- Center display (replaces old clickable hub) ---- */
   .center-display{
     position: absolute; top: 50%; left: 50%; width: 148px; height: 148px;
@@ -1409,11 +1434,13 @@
     if (host) host.classList.add('active');
 
     $('gameView').classList.add('open');
+    document.body.classList.add('game-open');   // lets the shell stop animating behind it
     const fn = window[g.resync];
     if (typeof fn === 'function') fn();
   };
   window.closeGame = function(){
     $('gameView').classList.remove('open');
+    document.body.classList.remove('game-open');
     // Let a game stop its round loop rather than run on behind a closed view.
     document.querySelectorAll('.game-host').forEach(h => {
       const stop = window[h.dataset.stop || ''];
@@ -3246,6 +3273,10 @@
   function startSpinFlow(){
     if (spinning || totalBet() <= 0 || totalBet() > balance) return;
     spinning = true;
+    // Mark the whole round, not just the wheel animation: the slot-boost
+    // overlay is itself expensive, so the ambient drift should be paused for
+    // it too. endRound() clears this.
+    document.getElementById('rouletteGame').classList.add('spinning');
     refreshBetUI();
     setCenterDisplay('…', 'крутим', false);
 
@@ -3278,6 +3309,7 @@
     if (!isFree && (totalBet() <= 0 || totalBet() > balance)) { refreshBetUI(); return; }
 
     spinning = true;
+    document.getElementById('rouletteGame').classList.add('spinning');  // free-spin chains re-enter here
     const roundBets = isFree ? freeSpinBets : { ...bets };
     if (!isFree) balance -= totalBet();
     renderBalance();
@@ -3330,8 +3362,10 @@
       const approxSeg = Math.floor(((rotation % (Math.PI*2)) / sliceAngle));
       if (approxSeg !== lastTickSegment && t < 1) {
         lastTickSegment = approxSeg;
-        pointerEl.style.transform = 'translateX(-50%) rotate(-8deg)';
-        setTimeout(() => { pointerEl.style.transform = 'translateX(-50%) rotate(0deg)'; }, 90);
+        // Toggle a class and let CSS transition it back; the old code armed a
+        // fresh setTimeout per tick, dozens of them across a single spin.
+        pointerEl.classList.add('tick');
+        requestAnimationFrame(() => pointerEl.classList.remove('tick'));
       }
 
       if (t < 1) requestAnimationFrame(frame);
@@ -3450,6 +3484,7 @@
   function endRound(){
     BET_OPTIONS.forEach(o => { bets[o.key] = 0; betChipColor[o.key] = null; });
     spinning = false;
+    document.getElementById('rouletteGame').classList.remove('spinning');
     boostMap = null;
     hideBoostBanner();
     drawWheel();
