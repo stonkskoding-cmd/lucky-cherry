@@ -645,10 +645,14 @@
 #rouletteGame .reel-window::before{ top: 0; background: linear-gradient(180deg, rgba(0,0,0,0.92), transparent); }
 #rouletteGame .reel-window::after{ bottom: 0; background: linear-gradient(0deg, rgba(0,0,0,0.92), transparent); }
 #rouletteGame .reel-strip{ display: flex; flex-direction: column; will-change: transform; }
+/* Font size is set per-symbol from the reel's real width in buildReelStrip:
+   a viewport-based size ignored how small the reel actually is, so "×100"
+   overflowed the window and got clipped. */
 #rouletteGame .reel-symbol{
     flex: 0 0 auto;
     display: flex; align-items: center; justify-content: center;
-    font-family: var(--serif); font-weight: 700; font-size: clamp(30px, 9vw, 46px);
+    font-family: var(--serif); font-weight: 700; line-height: 1;
+    white-space: nowrap; overflow: hidden;
     color: var(--gold-bright); text-shadow: 0 0 10px rgba(240,198,116,0.55);
   }
 #rouletteGame .reel-symbol.final{
@@ -709,8 +713,8 @@
 #rouletteGame .bet-all-center:disabled{ opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 #rouletteGame .bet-btn{
     position: relative;
-    display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 3px;
-    padding: 8px 4px 7px; border-radius: 11px; border: none;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    padding: 5px 4px 4px; border-radius: 10px; border: none;
     cursor: pointer; color: #fff; overflow: visible;
     touch-action: none;
     box-shadow: inset 0 0 0 1px rgba(255,255,255,0.14), 0 4px 10px rgba(0,0,0,0.35);
@@ -724,11 +728,11 @@
 #rouletteGame .bet-btn:active:not(:disabled){ transform: scale(0.95); }
 #rouletteGame .bet-btn:disabled{ opacity: 0.45; cursor: not-allowed; }
 #rouletteGame .bet-btn.has-bet{ box-shadow: inset 0 0 0 2px var(--gold-bright), 0 3px 10px rgba(0,0,0,0.4); }
-#rouletteGame .bb-badge{ font-family: var(--serif); font-weight: 700; font-size: 26px; line-height: 1; position: relative; z-index: 1; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+#rouletteGame .bb-badge{ font-family: var(--serif); font-weight: 700; font-size: 19px; line-height: 1; position: relative; z-index: 1; text-shadow: 0 2px 5px rgba(0,0,0,0.5); }
 #rouletteGame .bb-name{
-    font-size: 9.5px; color: rgba(255,255,255,0.85); letter-spacing: 0.04em; text-transform: uppercase;
-    border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 5px; margin-top: 2px; width: 100%; text-align: center;
-    position: relative; z-index: 1;
+    font-size: 8px; color: rgba(255,255,255,0.8); letter-spacing: 0.03em; text-transform: uppercase;
+    border-top: 1px dashed rgba(255,255,255,0.3); padding-top: 3px; margin-top: 1px; width: 100%; text-align: center;
+    position: relative; z-index: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
 #rouletteGame .ticket-chip{
     position: absolute; bottom: -10px; right: -8px; z-index: 2;
@@ -786,9 +790,9 @@
 #rouletteGame .chip-scroll-arrow:active:not(:disabled){ transform: scale(0.88); }
 #rouletteGame .chip-scroll-arrow:disabled{ opacity: 0.3; cursor: not-allowed; }
 #rouletteGame .chip-round{
-    flex: 0 0 auto; width: 50px; height: 50px; border-radius: 50%;
+    flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-family: var(--serif); font-weight: 700; font-size: 12.5px; color: #fff; text-align: center;
+    font-family: var(--serif); font-weight: 700; font-size: 11px; color: #fff; text-align: center;
     border: 3px dashed rgba(255,255,255,0.5);
     box-shadow: 0 4px 10px rgba(0,0,0,0.45), inset 0 2px 5px rgba(255,255,255,0.18);
     cursor: pointer; transition: transform 0.22s cubic-bezier(.2,1.6,.4,1), box-shadow 0.2s ease;
@@ -817,13 +821,16 @@
   }
 #rouletteGame .chip-double span{ font-size: 12px; color: var(--gold-bright); line-height: 1; }
 #rouletteGame .chip-double small{ font-size: 6px; color: var(--text-dim); letter-spacing: 0.05em; }
-#rouletteGame .flying-chip{
+/* Deliberately NOT scoped to #rouletteGame: the flying chip is appended to
+   <body>, so a scoped rule never matched it and the bet animation was
+   invisible. Self-contained for the same reason — --serif is scoped too. */
+  .flying-chip{
     position: fixed; width: 34px; height: 34px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
-    font-family: var(--serif); font-weight: 700; font-size: 11px; color: #fff;
+    font-family: Georgia, 'Times New Roman', serif; font-weight: 700; font-size: 11px; color: #fff;
     border: 2px dashed rgba(255,255,255,0.6);
-    box-shadow: 0 5px 12px rgba(0,0,0,0.5);
-    z-index: 50; pointer-events: none;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.55), inset 0 2px 5px rgba(255,255,255,0.25);
+    z-index: 120; pointer-events: none;
     transition: transform 0.42s cubic-bezier(.25,.75,.3,1.35), opacity 0.42s ease;
   }
 #rouletteGame .chip-dot{ display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 3px; border: 1px solid rgba(255,255,255,0.4); vertical-align: middle; }
@@ -1554,7 +1561,7 @@
     10: '#8a8f99', 20: '#c9564f', 30: '#4f8ed9', 50: '#4fbf7a',
     100: '#2b2b33', 250: '#b5467a', 500: '#7a4fb5', 1000: '#d4a24c', 5000: '#33c2c9'
   };
-  const GROWTH = 0.23;          // multiplier = e^(GROWTH * seconds): ~2x at 3s
+  const GROWTH = 0.15;          // multiplier = e^(GROWTH * seconds): ~2x at 4.6s, 10x at 15s
   const HOUSE_EDGE = 0.04;      // share of rounds that bust instantly at 1.00
   const MAX_MULT = 100;
 
@@ -1599,71 +1606,152 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
+  // Starfield is generated once so it stays put between frames instead of
+  // twinkling randomly every repaint.
+  const STARS = Array.from({ length: 46 }, () => ({
+    x: Math.random(), y: Math.random(),
+    r: 0.6 + Math.random() * 1.3, a: 0.25 + Math.random() * 0.5
+  }));
+
+  function niceTicks(spanM){
+    const candidates = [1.5, 2, 3, 5, 10, 20, 50, 100];
+    return candidates.filter(v => v > 1.02 && v <= spanM * 0.98);
+  }
+
   function draw(mult){
     const r = stage.getBoundingClientRect();
     const W = r.width, H = r.height;
     if (!W || !H) return;
     ctx.clearRect(0, 0, W, H);
 
-    const padL = 8, padB = 10, padT = 10, padR = 8;
+    const padL = 34, padB = 22, padT = 14, padR = 12;
     const plotW = W - padL - padR, plotH = H - padT - padB;
+    if (plotW <= 0 || plotH <= 0) return;
 
     // Both axes rescale as the curve grows, so it never leaves the box.
-    const spanMs = Math.max(1200, msFor(Math.max(mult, 1.35)));
-    const spanM  = Math.max(1.35, mult);
+    const spanMs = Math.max(2600, msFor(Math.max(mult, 1.5)) * 1.08);
+    const spanM  = Math.max(1.5, mult * 1.04);
 
     const xOf = (ms) => padL + (ms / spanMs) * plotW;
     const yOf = (m)  => padT + plotH - ((m - 1) / (spanM - 1 || 1)) * plotH;
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-    ctx.lineWidth = 1;
-    for (let i = 1; i < 4; i++) {
-      const y = padT + (plotH / 4) * i;
-      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
-    }
-
-    const steps = 48;
-    const endMs = msFor(mult);
     const bust = phase === 'over' && !cashedAt;
     const line = bust ? '#fb5b6b' : (cashedAt ? '#34d399' : '#f0c674');
 
-    ctx.beginPath();
-    ctx.moveTo(xOf(0), yOf(1));
-    for (let i = 1; i <= steps; i++) {
-      const ms = (endMs / steps) * i;
-      ctx.lineTo(xOf(ms), yOf(multAt(ms)));
-    }
-
-    const grad = ctx.createLinearGradient(0, padT, 0, H);
-    grad.addColorStop(0, line + '55');
-    grad.addColorStop(1, line + '00');
+    // Drift the starfield with the climb so height reads as motion.
+    const drift = Math.min(1, (mult - 1) / 8);
     ctx.save();
-    ctx.lineTo(xOf(endMs), yOf(1));
-    ctx.lineTo(xOf(0), yOf(1));
-    ctx.closePath();
-    ctx.fillStyle = grad;
-    ctx.fill();
+    STARS.forEach(s => {
+      const sy = (s.y + drift * 0.6) % 1;
+      ctx.globalAlpha = s.a * (phase === 'flying' ? 1 : 0.6);
+      ctx.beginPath();
+      ctx.arc(padL + s.x * plotW, padT + sy * plotH, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = '#cfd8ff';
+      ctx.fill();
+    });
     ctx.restore();
 
-    ctx.beginPath();
-    ctx.moveTo(xOf(0), yOf(1));
-    for (let i = 1; i <= steps; i++) {
-      const ms = (endMs / steps) * i;
-      ctx.lineTo(xOf(ms), yOf(multAt(ms)));
+    // Horizontal rules at meaningful multipliers, labelled.
+    ctx.font = '600 9px -apple-system, Segoe UI, Roboto, sans-serif';
+    ctx.textBaseline = 'middle';
+    niceTicks(spanM).forEach(v => {
+      const y = yOf(v);
+      if (y < padT || y > padT + plotH) return;
+      ctx.strokeStyle = 'rgba(255,255,255,0.07)';
+      ctx.setLineDash([3, 4]);
+      ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(padL, y); ctx.lineTo(W - padR, y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.textAlign = 'right';
+      ctx.fillText(v + '×', padL - 6, y);
+    });
+
+    // Baseline + elapsed seconds along the bottom.
+    ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(padL, yOf(1)); ctx.lineTo(W - padR, yOf(1)); ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    const secSpan = spanMs / 1000;
+    const stepSec = secSpan <= 6 ? 1 : secSpan <= 15 ? 3 : 5;
+    for (let s = stepSec; s < secSpan; s += stepSec) {
+      ctx.fillText(s + 'с', xOf(s * 1000), padT + plotH + 11);
     }
+
+    const steps = 64;
+    const endMs = msFor(mult);
+    const curve = (cb) => {
+      ctx.moveTo(xOf(0), yOf(1));
+      for (let i = 1; i <= steps; i++) {
+        const ms = (endMs / steps) * i;
+        ctx.lineTo(xOf(ms), yOf(multAt(ms)));
+      }
+      if (cb) cb();
+    };
+
+    const grad = ctx.createLinearGradient(0, padT, 0, padT + plotH);
+    grad.addColorStop(0, line + '4d');
+    grad.addColorStop(1, line + '00');
+    ctx.beginPath();
+    curve(() => { ctx.lineTo(xOf(endMs), yOf(1)); ctx.lineTo(xOf(0), yOf(1)); ctx.closePath(); });
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.beginPath();
+    curve();
     ctx.strokeStyle = line;
     ctx.lineWidth = 3;
     ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
     ctx.shadowColor = line;
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = 12;
     ctx.stroke();
     ctx.shadowBlur = 0;
 
     const hx = xOf(endMs), hy = yOf(mult);
-    ctx.beginPath();
-    ctx.arc(hx, hy, bust ? 6 : 5, 0, Math.PI * 2);
-    ctx.fillStyle = bust ? '#fb5b6b' : '#fff8e6';
-    ctx.fill();
+
+    if (bust) {
+      // Burst instead of a rocket once it is gone.
+      ctx.save();
+      ctx.translate(hx, hy);
+      for (let i = 0; i < 9; i++) {
+        const a = (Math.PI * 2 / 9) * i;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(a) * 5, Math.sin(a) * 5);
+        ctx.lineTo(Math.cos(a) * 14, Math.sin(a) * 14);
+        ctx.strokeStyle = '#fb5b6b';
+        ctx.lineWidth = 2; ctx.lineCap = 'round';
+        ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(0, 0, 5, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff'; ctx.fill();
+      ctx.restore();
+    } else {
+      // Rocket tilted along the curve's slope, with a short flame.
+      const prevMs = Math.max(0, endMs - spanMs / steps);
+      const angle = Math.atan2(yOf(mult) - yOf(multAt(prevMs)), hx - xOf(prevMs));
+      ctx.save();
+      ctx.translate(hx, hy);
+      ctx.rotate(angle);
+      if (phase === 'flying') {
+        const flame = 10 + Math.random() * 8;
+        const fg = ctx.createLinearGradient(-flame, 0, 0, 0);
+        fg.addColorStop(0, 'rgba(255,120,40,0)');
+        fg.addColorStop(1, 'rgba(255,190,80,0.95)');
+        ctx.beginPath();
+        ctx.moveTo(-6, -3.2); ctx.lineTo(-6 - flame, 0); ctx.lineTo(-6, 3.2);
+        ctx.closePath();
+        ctx.fillStyle = fg; ctx.fill();
+      }
+      ctx.beginPath();
+      ctx.moveTo(9, 0); ctx.lineTo(-5, -5.2); ctx.lineTo(-2.5, 0); ctx.lineTo(-5, 5.2);
+      ctx.closePath();
+      ctx.fillStyle = cashedAt ? '#34d399' : '#fff8e6';
+      ctx.shadowColor = line; ctx.shadowBlur = 10;
+      ctx.fill();
+      ctx.restore();
+    }
   }
 
   function renderChips(){
@@ -2039,7 +2127,11 @@
   }
 
   function flyChipToButton(targetEl){
-    const startRect = activeChipEl().getBoundingClientRect();
+    // Cosmetic only, and it runs before the bet is credited — never let a
+    // missing chip element throw and take the whole round down with it.
+    const source = activeChipEl();
+    if (!source || !targetEl) return;
+    const startRect = source.getBoundingClientRect();
     const endRect = targetEl.getBoundingClientRect();
     const clone = document.createElement('div');
     clone.className = 'flying-chip';
@@ -2344,21 +2436,36 @@
     return opt.kind === 'mult' ? '×' + opt.badge : opt.badge;
   }
 
+  // Longest label the reel must hold decides the size: "×100" is four glyphs
+  // wide and must fit the window, so scale off width, not the viewport.
+  function reelFontSize(windowEl, pool, finalLabel, symbolHeight){
+    const w = windowEl.clientWidth || symbolHeight;
+    let longest = String(finalLabel || '').length;
+    for (const p of pool) longest = Math.max(longest, String(p).length);
+    longest = Math.max(1, longest);
+    const byWidth  = (w * 0.86) / (longest * 0.6);   // ~0.6em per serif glyph
+    const byHeight = symbolHeight * 0.5;
+    return Math.max(12, Math.floor(Math.min(byWidth, byHeight)));
+  }
+
   function buildReelStrip(windowEl, pool, finalLabel, symbolHeight){
     windowEl.innerHTML = '';
     const strip = document.createElement('div');
     strip.className = 'reel-strip';
+    const font = reelFontSize(windowEl, pool, finalLabel, symbolHeight);
     const count = 24;
     for (let i = 0; i < count - 1; i++) {
       const sym = document.createElement('div');
       sym.className = 'reel-symbol';
       sym.style.height = symbolHeight + 'px';
+      sym.style.fontSize = font + 'px';
       sym.textContent = pool[Math.floor(Math.random() * pool.length)];
       strip.appendChild(sym);
     }
     const finalSym = document.createElement('div');
     finalSym.className = 'reel-symbol final';
     finalSym.style.height = symbolHeight + 'px';
+    finalSym.style.fontSize = font + 'px';
     finalSym.textContent = finalLabel;
     strip.appendChild(finalSym);
     windowEl.appendChild(strip);
