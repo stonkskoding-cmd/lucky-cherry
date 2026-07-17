@@ -726,6 +726,55 @@
     35% { opacity: 1; } 45% { opacity: 0.5; } 60% { opacity: 1; } 100% { opacity: 1; }
   }
 #rouletteGame .center-display.flicker .cd-value{ animation: neonFlicker 0.7s steps(2, end); }
+/* ---- Bonus overlays share the wheel's stage: same frame, same entrance ---- */
+#rouletteGame .cashhunt, #rouletteGame .pachinko{
+    position: absolute; inset: 3%; border-radius: 22px; z-index: 9;
+    border: 5px solid var(--gold);
+    box-shadow: 0 24px 60px -8px rgba(0,0,0,0.85), inset 0 0 30px rgba(0,0,0,0.55), 0 0 44px 6px rgba(240,198,116,0.35);
+    display: flex; flex-direction: column; align-items: center;
+    gap: 8px; padding: 10px;
+    opacity: 0; pointer-events: none; transform: scale(0.9);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+#rouletteGame .cashhunt.active, #rouletteGame .pachinko.active{ opacity: 1; pointer-events: auto; transform: scale(1); }
+
+/* ---- Cash Hunt ---- */
+#rouletteGame .cashhunt{ background: linear-gradient(165deg, #1b3a1e, #0b1a0d 55%, #050a06); }
+#rouletteGame .ch-head{ width: 100%; display: flex; flex-direction: column; gap: 5px; align-items: center; }
+#rouletteGame .ch-title{ font-family: var(--serif); font-weight: 700; font-size: 13px; letter-spacing: 0.08em;
+    color: var(--gold-bright); text-shadow: 0 0 10px rgba(240,198,116,0.7); }
+#rouletteGame .ch-timer{ width: 82%; height: 4px; border-radius: 999px; background: rgba(255,255,255,0.12); overflow: hidden; }
+#rouletteGame .ch-timer-fill{ height: 100%; width: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, #34d399, var(--gold-bright) 60%, #fb5b6b);
+    transform-origin: left center; }
+#rouletteGame .ch-grid{ flex: 1 1 auto; min-height: 0; width: 100%;
+    display: grid; grid-template-columns: repeat(4, 1fr); grid-auto-rows: 1fr; gap: 5px; }
+#rouletteGame .ch-cell{
+    position: relative; border-radius: 8px; cursor: pointer; overflow: hidden;
+    background: linear-gradient(160deg, #2f6b3a, #14331b);
+    border: 1px solid rgba(255,255,255,0.14);
+    display: grid; place-items: center; font-size: 15px;
+    transition: transform 0.14s ease, filter 0.2s ease;
+  }
+#rouletteGame .ch-cell:active{ transform: scale(0.92); }
+#rouletteGame .ch-cell.revealed{ background: linear-gradient(160deg, #3d3d4d, #1c1c26); cursor: default; }
+#rouletteGame .ch-cell.revealed .ch-val{ opacity: 1; transform: scale(1); }
+#rouletteGame .ch-cell.picked{ border-color: var(--gold-bright);
+    background: radial-gradient(circle at 50% 40%, #f0c674, #a9762a 75%);
+    box-shadow: 0 0 20px -2px rgba(240,198,116,0.9); animation: chPop 0.5s ease; }
+#rouletteGame .ch-cell.picked .ch-val{ color: #241a05; font-size: 15px; }
+  @keyframes chPop { 0%{ transform: scale(1);} 40%{ transform: scale(1.28);} 100%{ transform: scale(1);} }
+#rouletteGame .ch-val{ font-family: var(--serif); font-weight: 700; font-size: 12px; color: #cfe8d5;
+    opacity: 0; transform: scale(0.5); transition: opacity 0.25s ease, transform 0.25s cubic-bezier(.2,1.6,.4,1); }
+#rouletteGame .ch-sub{ font-size: 11.5px; color: #ffe9b0; text-align: center; min-height: 15px; font-weight: 600; }
+
+/* ---- Pachinko ---- */
+#rouletteGame .pachinko{ background: linear-gradient(165deg, #2a1740, #140a24 55%, #070410); }
+#rouletteGame .pk-title{ font-family: var(--serif); font-weight: 700; font-size: 13px; letter-spacing: 0.08em;
+    color: var(--gold-bright); text-shadow: 0 0 10px rgba(240,198,116,0.7); }
+#rouletteGame .pachinko canvas{ flex: 1 1 auto; min-height: 0; width: 100%; display: block; }
+#rouletteGame .pk-sub{ font-size: 11.5px; color: #ffe9b0; text-align: center; min-height: 15px; font-weight: 600; }
+
 /* ---- Coin flip bonus: sits over the wheel like the slot-boost overlay ---- */
 #rouletteGame .coinflip{
     position: absolute; inset: 3%; border-radius: 22px; z-index: 9;
@@ -1235,6 +1284,21 @@
       <div class="cd-label" id="cdLabel">жми крути</div>
     </div>
 
+    <div class="cashhunt" id="cashHunt">
+      <div class="ch-head">
+        <div class="ch-title">🎯 ОХОТА ЗА КЭШЕМ</div>
+        <div class="ch-timer"><div class="ch-timer-fill" id="chTimerFill"></div></div>
+      </div>
+      <div class="ch-grid" id="chGrid"></div>
+      <div class="ch-sub" id="chSub">Выбери цель!</div>
+    </div>
+
+    <div class="pachinko" id="pachinko">
+      <div class="pk-title">🎡 ПАЧИНКО</div>
+      <canvas id="pkCanvas"></canvas>
+      <div class="pk-sub" id="pkSub">Роняем шар…</div>
+    </div>
+
     <div class="coinflip" id="coinFlip">
       <div class="cf-title">МОНЕТКА</div>
       <div class="cf-odds">
@@ -1286,6 +1350,7 @@
     <div class="bet-total">
       <span>Ставка</span>
       <b id="totalBetAmt">0 🍒</b>
+      <button class="ghost-btn" id="repeatBetBtn" title="Повторить прошлую ставку">⟲</button>
       <button class="ghost-btn" id="reshuffleBtn" title="Перемешать колесо">↻</button>
     </div>
   </div>
@@ -2803,6 +2868,9 @@
   }
   let bets = {}; BET_OPTIONS.forEach(o => bets[o.key] = 0);
   let betChipColor = {}; BET_OPTIONS.forEach(o => betChipColor[o.key] = null);
+  // Last settled round's stakes, kept so "repeat" can rebuild them.
+  let lastRoundBets = null;
+  let lastRoundColors = null;
   let history = [];
   let spinning = false;
   let rotation = 0;
@@ -2826,6 +2894,7 @@
   const historyStrip = document.getElementById('historyStrip');
   const chipRow = document.getElementById('chipRow');
   const reshuffleBtn = document.getElementById('reshuffleBtn');
+  const repeatBetBtn = document.getElementById('repeatBetBtn');
   const chipScrollLeft = document.getElementById('chipScrollLeft');
   const chipScrollRight = document.getElementById('chipScrollRight');
   const ambientBg = document.getElementById('ambientBg');
@@ -2994,6 +3063,9 @@
     const disabled = spinning || totalBet() <= 0 || totalBet() > balance;
     spinBtn.classList.toggle('disabled', disabled);
     reshuffleBtn.disabled = spinning;
+    // Nothing to repeat until a round has settled, and never mid-spin.
+    const repeatCost = lastRoundBets ? Object.values(lastRoundBets).reduce((a, b) => a + b, 0) : 0;
+    repeatBetBtn.disabled = spinning || !lastRoundBets || repeatCost > balance;
     const groupCost = 4 * currentStakeValue();
     betAllMultBtn.disabled = spinning || totalBet() + groupCost > balance;
     betAllBonusBtn.disabled = spinning || totalBet() + groupCost > balance;
@@ -3048,6 +3120,18 @@
     if (spinning) return;
     segments = buildSegments();
     drawWheel();
+  });
+
+  repeatBetBtn.addEventListener('click', () => {
+    if (spinning || !lastRoundBets) return;
+    const cost = Object.values(lastRoundBets).reduce((a, b) => a + b, 0);
+    // Refuse rather than silently place a partial round the player didn't choose.
+    if (cost > balance) { if (window.toast) window.toast('Не хватает на повтор'); return; }
+    BET_OPTIONS.forEach(o => {
+      bets[o.key] = lastRoundBets[o.key] || 0;
+      betChipColor[o.key] = lastRoundColors ? lastRoundColors[o.key] : null;
+    });
+    refreshBetUI();
   });
 
   chipScrollLeft.addEventListener('click', () => chipRow.scrollBy({ left: -120, behavior: 'smooth' }));
@@ -3335,10 +3419,185 @@
     }, 1800);
   }
 
+  // ---- Cash Hunt ----------------------------------------------------------
+  // Twelve targets, one pick, a countdown to force the decision. The spread is
+  // drawn around the segment's base value and shuffled, so every target is a
+  // real possibility rather than a fixed layout players could memorise.
+  const CH_SPREAD = [0.3, 0.4, 0.5, 0.6, 0.8, 1.0, 1.0, 1.3, 1.6, 2.0, 2.6, 4.0];
+  const CH_TIME = 5000;
+
+  function runCashHunt(base, onDone){
+    const panel = document.getElementById('cashHunt');
+    const grid  = document.getElementById('chGrid');
+    const sub   = document.getElementById('chSub');
+    const fill  = document.getElementById('chTimerFill');
+    if (!panel || !grid) { onDone(base); return; }
+
+    const vals = CH_SPREAD.map(m => Math.max(2, Math.round(base * m)));
+    for (let i = vals.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [vals[i], vals[j]] = [vals[j], vals[i]];
+    }
+
+    grid.innerHTML = '';
+    let done = false;
+    let timer = null;
+
+    const finish = (idx) => {
+      if (done) return;
+      done = true;
+      clearTimeout(timer);
+      fill.style.transition = 'none';
+      const won = vals[idx];
+      [...grid.children].forEach((c, i) => {
+        c.classList.add('revealed');
+        c.querySelector('.ch-val').textContent = '×' + vals[i];
+      });
+      grid.children[idx].classList.add('picked');
+      sub.textContent = 'Твоя цель: ×' + won + '!';
+      setTimeout(() => { panel.classList.remove('active'); onDone(won); }, 1500);
+    };
+
+    vals.forEach((v, i) => {
+      const cell = document.createElement('div');
+      cell.className = 'ch-cell';
+      const face = document.createElement('span');
+      face.textContent = '🎯';
+      const val = document.createElement('span');
+      val.className = 'ch-val';
+      cell.appendChild(face);
+      cell.appendChild(val);
+      cell.addEventListener('click', () => {
+        if (done) return;
+        face.textContent = '';
+        finish(i);
+      });
+      grid.appendChild(cell);
+    });
+
+    panel.classList.add('active');
+    sub.textContent = 'Выбери цель — быстро!';
+    fill.style.transition = 'none';
+    fill.style.transform = 'scaleX(1)';
+    // Force the reset to land before animating the drain.
+    void fill.offsetWidth;
+    fill.style.transition = `transform ${CH_TIME}ms linear`;
+    fill.style.transform = 'scaleX(0)';
+
+    // Timers, not the frame loop: an idle player must still get paid, and a
+    // backgrounded mini app must still resolve.
+    timer = setTimeout(() => {
+      if (done) return;
+      sub.textContent = 'Время вышло — целимся наугад';
+      finish(Math.floor(Math.random() * vals.length));
+    }, CH_TIME);
+  }
+
+  // ---- Pachinko -----------------------------------------------------------
+  // A puck falls through pegs into a slot. The landing slot is decided up front
+  // and the puck is steered to it, so the payout never depends on frame timing
+  // — a dropped frame must not change what the player wins.
+  const PK_SLOTS = [0.4, 0.8, 1.5, 3.0, 1.5, 0.8, 0.4];
+
+  function runPachinko(base, onDone){
+    const panel  = document.getElementById('pachinko');
+    const canvas = document.getElementById('pkCanvas');
+    const sub    = document.getElementById('pkSub');
+    if (!panel || !canvas || !canvas.getContext) { onDone(base); return; }
+    const ctx = canvas.getContext('2d');
+
+    const mults = PK_SLOTS.map(m => Math.max(2, Math.round(base * m)));
+    const target = Math.floor(Math.random() * mults.length);
+
+    panel.classList.add('active');
+    sub.textContent = 'Роняем шар…';
+
+    const r = canvas.getBoundingClientRect();
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const W = Math.max(80, r.width), H = Math.max(80, r.height);
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const rows = 6;
+    const slotH = 22;
+    const boardH = H - slotH;
+    const pegs = [];
+    for (let row = 0; row < rows; row++) {
+      const count = 3 + row;
+      const y = 16 + (boardH - 30) * (row / (rows - 1));
+      for (let i = 0; i < count; i++) {
+        const x = W / 2 + (i - (count - 1) / 2) * (W / (count + 1.2));
+        pegs.push({ x, y });
+      }
+    }
+
+    const slotW = W / mults.length;
+    const endX = slotW * (target + 0.5);
+    const startX = W / 2;
+    const DUR = 2600;
+    const t0 = Date.now();
+    let raf = null;
+
+    function puckAt(t){
+      // Vertical fall eases; horizontal drifts from centre to the target slot
+      // with a decaying wobble that reads as peg bounces.
+      const y = 14 + (boardH - 20) * (t * t * 0.7 + t * 0.3);
+      const wobble = Math.sin(t * Math.PI * 7) * (1 - t) * (W * 0.13);
+      const x = startX + (endX - startX) * (t * t) + wobble;
+      return { x: Math.max(10, Math.min(W - 10, x)), y };
+    }
+
+    function draw(t){
+      ctx.clearRect(0, 0, W, H);
+
+      ctx.fillStyle = 'rgba(255,255,255,0.5)';
+      pegs.forEach(p => {
+        ctx.beginPath(); ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2); ctx.fill();
+      });
+
+      mults.forEach((m, i) => {
+        const x = slotW * i;
+        const hot = i === target && t >= 1;
+        ctx.fillStyle = hot ? 'rgba(240,198,116,0.9)' : 'rgba(255,255,255,0.08)';
+        ctx.fillRect(x + 1, H - slotH, slotW - 2, slotH - 1);
+        ctx.fillStyle = hot ? '#241a05' : 'rgba(255,255,255,0.75)';
+        ctx.font = '700 10px Georgia, serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('×' + m, x + slotW / 2, H - slotH / 2);
+      });
+
+      const p = puckAt(Math.min(t, 1));
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 6, 0, Math.PI * 2);
+      ctx.fillStyle = '#fff8e6';
+      ctx.shadowColor = '#f0c674'; ctx.shadowBlur = 12;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+
+    function frame(){
+      const t = (Date.now() - t0) / DUR;
+      draw(Math.min(t, 1));
+      if (t < 1) { raf = requestAnimationFrame(frame); return; }
+    }
+    frame();
+
+    // The settle is on a timer so a frozen frame loop cannot swallow the round.
+    setTimeout(() => {
+      if (raf) cancelAnimationFrame(raf);
+      draw(1);
+      const won = mults[target];
+      sub.textContent = 'Шар в ×' + won + '!';
+      setTimeout(() => { panel.classList.remove('active'); onDone(won); }, 1300);
+    }, DUR + 40);
+  }
+
   // Bonus segment -> its mini game. Each takes the segment's base value and
-  // calls back with the multiplier that actually pays. Cash Hunt (jackpot) and
-  // Pachinko (rain) still settle at their base value until they are built.
+  // calls back with the multiplier that actually pays.
   const BONUS_GAMES = {
+    jackpot:  runCashHunt,
+    rain:     runPachinko,
     treasure: runCoinflip,
   };
 
@@ -3569,9 +3828,27 @@
     // decides the multiplier. Without a stake there is nothing to play for, so
     // it settles straight away.
     if (BONUS_GAMES[seg.key] && stake > 0) {
-      BONUS_GAMES[seg.key](effectiveValue, (finalValue) => {
+      // A mini game that throws, or one that never calls back, would strand
+      // `spinning` and deadlock the panel — the failure this game has already
+      // shipped twice. Guarantee exactly one settle: on throw, fall back to the
+      // base value; and hold a watchdog in case the callback never arrives.
+      let settled = false;
+      const once = (finalValue) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(guard);
         settleRound(seg, opt, stake * finalValue, roundBets, chainRemaining, isChainedFreeSpin);
-      });
+      };
+      const guard = setTimeout(() => {
+        [document.getElementById('cashHunt'), document.getElementById('pachinko'),
+         document.getElementById('coinFlip')].forEach(p => p && p.classList.remove('active'));
+        once(effectiveValue);
+      }, 15000);
+      try {
+        BONUS_GAMES[seg.key](effectiveValue, once);
+      } catch(e) {
+        once(effectiveValue);
+      }
       return;
     }
 
@@ -3607,6 +3884,11 @@
   }
 
   function endRound(){
+    // Snapshot before clearing so the round can be repeated with one tap.
+    if (totalBet() > 0) {
+      lastRoundBets = { ...bets };
+      lastRoundColors = { ...betChipColor };
+    }
     BET_OPTIONS.forEach(o => { bets[o.key] = 0; betChipColor[o.key] = null; });
     spinning = false;
     document.getElementById('rouletteGame').classList.remove('spinning');
