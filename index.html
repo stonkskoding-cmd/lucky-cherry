@@ -307,6 +307,25 @@
   .onboard .ob-logo h1 { margin: 0; font-size: 30px; font-weight: 800; }
   .onboard .ob-logo h1 b { background: linear-gradient(90deg, var(--neon-pink), var(--neon-cyan)); -webkit-background-clip: text; background-clip: text; color: transparent; }
   .onboard .ob-logo p { margin: 6px 0 0; font-size: 13px; color: var(--text-dim); }
+  .ob-sep { display: flex; align-items: center; gap: 10px; margin: 14px 0 12px; }
+  .ob-sep::before, .ob-sep::after { content: ''; flex: 1; height: 1px; background: var(--glass-border); }
+  .ob-sep span { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.08em; }
+  .ob-form { display: flex; flex-direction: column; gap: 8px; }
+  .ob-input {
+    width: 100%; padding: 12px 14px; border-radius: 12px;
+    background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border);
+    color: var(--text); font-size: 14px; font-family: inherit; outline: none;
+  }
+  .ob-input:focus { border-color: var(--neon-purple); background: rgba(255,255,255,0.08); }
+  .ob-input::placeholder { color: var(--text-faint); }
+  .ob-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 2px; }
+  .ob-row .btn { margin: 0; }
+  .ob-err { font-size: 11.5px; color: var(--danger); min-height: 14px; line-height: 1.3; }
+  .ob-warn {
+    margin-top: 12px; padding: 9px 11px; border-radius: 10px; font-size: 10.5px; line-height: 1.45;
+    color: var(--warn); background: rgba(251,191,36,0.08); border: 1px solid rgba(251,191,36,0.25);
+  }
+  .ob-warn b { color: #fde68a; }
   .ob-card { border-radius: 24px; padding: 22px; }
   .ob-card h2 { margin: 0 0 6px; font-size: 20px; font-weight: 800; }
   .ob-card p { margin: 0 0 18px; font-size: 13px; color: var(--text-dim); line-height: 1.5; }
@@ -1250,8 +1269,29 @@
     </div>
     <div class="ob-card glass">
       <h2>Добро пожаловать</h2>
-      <p>Войди через Telegram, чтобы сохранять баланс, бонусы и историю игр между сессиями.</p>
+      <p>Войди, чтобы баланс, бонусы и история сохранялись между заходами.</p>
+
       <button class="btn block ob-tg" onclick="loginTelegram()"><span class="tgico">✈️</span> Войти через Telegram</button>
+
+      <div class="ob-sep"><span>или</span></div>
+
+      <form class="ob-form" id="obForm" autocomplete="on" onsubmit="return false;">
+        <input class="ob-input" id="obNick" type="text" name="username" placeholder="Ник" autocomplete="username"
+               maxlength="20" autocapitalize="none" spellcheck="false">
+        <input class="ob-input" id="obPass" type="password" name="password" placeholder="Пароль" autocomplete="current-password"
+               maxlength="64">
+        <div class="ob-err" id="obErr"></div>
+        <div class="ob-row">
+          <button class="btn block" id="obLogin" type="submit">Войти</button>
+          <button class="btn ghost block" id="obReg" type="button">Создать</button>
+        </div>
+      </form>
+
+      <div class="ob-warn">
+        ⚠️ Аккаунт по нику хранится <b>только в этом браузере</b>. Это демо-профиль без настоящей защиты —
+        не используй пароль, который применяешь где-то ещё.
+      </div>
+
       <button class="btn ghost block" style="margin-top:10px" onclick="loginDemo()">Продолжить как гость</button>
       <div class="ob-fine">Играя, вы подтверждаете, что вам есть 18 лет, и принимаете <a onclick="toast('Условия использования')">условия</a> и <a onclick="toast('Политика конфиденциальности')">политику</a>.</div>
     </div>
@@ -1287,9 +1327,17 @@
   const usedPromos = new Set();
   const PROMOS = { 'CHERRY': 250, 'WELCOME': 500, 'LUCKY777': 777 };
 
-  // ---- persistence within the session (survives view switches, not reload) ----
   const $ = (id) => document.getElementById(id);
   const fmt = (n) => n.toLocaleString('ru-RU');
+
+  // Games drive the balance through here on every round, so this is the one
+  // place that has to persist. Writes are debounced: a spin can call it several
+  // times in a burst and localStorage is synchronous.
+  let saveTimer = null;
+  function queueSave(){
+    if (saveTimer) return;
+    saveTimer = setTimeout(() => { saveTimer = null; saveProgress(); }, 400);
+  }
 
   function setBalance(v){
     state.balance = Math.max(0, Math.round(v));
@@ -1297,11 +1345,13 @@
     $('topBalance').textContent = s;
     $('walletBalance').textContent = s;
     $('gameBalance').textContent = s;
+    queueSave();
   }
 
   function addTx(label, amt, ico){
     state.tx.unshift({ t: label, when: 'Только что', amt, ico: ico || (amt >= 0 ? '↓' : '↑') });
     renderTx();
+    queueSave();
   }
 
   // ============================================================
@@ -1359,6 +1409,7 @@
       state.stats.spins++;
       if (win) { state.stats.wins++; if (payout > state.stats.best) state.stats.best = payout; }
       renderStats();
+      queueSave();
     }
   };
 
@@ -1437,7 +1488,7 @@
       ['Честные ли игры?', 'Да. Результат каждого спина определяется на сервере по технологии Provably Fair — его можно проверить после игры. В этом прототипе логика демонстрационная.'],
       ['Как вывести выигрыш?', 'Вывод доступен после верификации аккаунта. Открой Кошелёк → Вывести и следуй инструкциям. В демо-режиме вывод отключён.'],
       ['Что такое слот-буст?', 'С шансом 1 к 3 перед прокрутом колеса включается автомат, который усиливает одну позицию множителем до ×100.'],
-      ['Безопасно ли это?', 'Мы не храним пароли — вход идёт через Telegram. Все операции с балансом проходят на защищённом сервере.'],
+      ['Безопасно ли это?', 'Сейчас это демо: баланс и результаты раундов считаются прямо в браузере и хранятся только на твоём устройстве — сервера пока нет. Вход по нику это локальный профиль, а не защита аккаунта: пароль хешируется, но лежит рядом с данными. Не используй пароль от других сервисов. Настоящие деньги появятся только после переноса баланса и генератора на сервер с проверкой Telegram initData.'],
     ];
     $('faqList').innerHTML = faqs.map(([q,a]) => `
       <div class="faq-item">
@@ -1559,30 +1610,198 @@
   };
 
   // ============================================================
-  //  AUTH (Telegram-style — real verification happens server-side)
+  //  STORAGE
+  //
+  //  Everything here is local to the browser and trivially editable from the
+  //  console. That is acceptable for demo cherries and NOT acceptable for
+  //  anything with value: balances and round results must move server-side
+  //  before real money, along with verifying Telegram initData against the
+  //  bot token. See the deposit/withdraw notes.
+  // ============================================================
+  const ACCOUNTS_KEY = 'lc:accounts:v1';
+  const SESSION_KEY  = 'lc:session:v1';
+
+  function storeAvailable(){
+    try { localStorage.setItem('lc:probe', '1'); localStorage.removeItem('lc:probe'); return true; }
+    catch(e){ return false; }   // private mode, disabled storage
+  }
+  const HAS_STORE = storeAvailable();
+
+  function readAccounts(){
+    if (!HAS_STORE) return {};
+    try { return JSON.parse(localStorage.getItem(ACCOUNTS_KEY) || '{}') || {}; }
+    catch(e){ return {}; }
+  }
+  function writeAccounts(all){
+    if (!HAS_STORE) return;
+    try { localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(all)); } catch(e){}
+  }
+
+  function snapshot(){
+    return {
+      balance: state.balance,
+      stats: state.stats,
+      daily: state.daily,
+      tx: state.tx.slice(0, 40),
+      promos: [...usedPromos],
+    };
+  }
+
+  function saveProgress(){
+    if (!state.user || !state.user.id || !HAS_STORE) return;
+    const all = readAccounts();
+    const acc = all[state.user.id];
+    if (!acc) return;
+    acc.data = snapshot();
+    acc.profile = { name: state.user.name, handle: state.user.handle, avatar: state.user.avatar, viaTelegram: state.user.viaTelegram };
+    writeAccounts(all);
+  }
+
+  function applyData(d){
+    if (!d) return;
+    if (typeof d.balance === 'number') state.balance = d.balance;
+    if (d.stats) state.stats = d.stats;
+    if (d.daily) state.daily = d.daily;
+    if (Array.isArray(d.tx)) state.tx = d.tx;
+    usedPromos.clear();
+    (d.promos || []).forEach(p => usedPromos.add(p));
+  }
+
+  // ============================================================
+  //  AUTH
+  //
+  //  The nickname path is a LOCAL profile, not authentication: the hash sits
+  //  in this browser next to the thing it protects, so anyone with the device
+  //  can bypass it. It exists so a guest keeps their balance across reloads.
+  //  Passwords are still PBKDF2-hashed rather than stored as text, because
+  //  people reuse passwords and a plaintext one here would leak that reuse to
+  //  any script on the page.
   // ============================================================
   function detectTelegram(){
     try { return !!(window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData); }
     catch(e){ return false; }
   }
 
+  function randomSalt(){
+    const a = new Uint8Array(16);
+    crypto.getRandomValues(a);
+    return [...a].map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  async function hashPassword(pw, salt){
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey('raw', enc.encode(pw), 'PBKDF2', false, ['deriveBits']);
+    const bits = await crypto.subtle.deriveBits(
+      { name: 'PBKDF2', salt: enc.encode(salt), iterations: 120000, hash: 'SHA-256' }, key, 256);
+    return [...new Uint8Array(bits)].map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  // Constant-time-ish compare; the win here is not leaking length/prefix.
+  function sameHash(a, b){
+    if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false;
+    let diff = 0;
+    for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+    return diff === 0;
+  }
+
+  function obError(msg){ const e = $('obErr'); if (e) e.textContent = msg || ''; }
+
+  function loadInto(id, profile, data){
+    state.user = { id, ...profile };
+    applyData(data);
+    setBalance(state.balance);
+    renderTx(); renderStats(); renderDaily();
+    if (HAS_STORE) { try { localStorage.setItem(SESSION_KEY, id); } catch(e){} }
+    finishLogin();
+  }
+
   window.loginTelegram = function(){
-    // In a real mini-app: window.Telegram.WebApp.initData is sent to your backend,
-    // which verifies the signature with the bot token and returns the user's account.
-    let name = 'Игрок', handle = '@player';
+    // A real mini app posts initData to a backend, which verifies the HMAC with
+    // the bot token. initDataUnsafe is display-only and must never be trusted
+    // for anything that pays out.
+    let name = 'Игрок', handle = '@player', uid = 'local';
     if (detectTelegram()){
       const u = window.Telegram.WebApp.initDataUnsafe && window.Telegram.WebApp.initDataUnsafe.user;
-      if (u){ name = u.first_name || name; handle = u.username ? '@'+u.username : handle; }
+      if (u){
+        name = u.first_name || name;
+        handle = u.username ? '@' + u.username : handle;
+        uid = String(u.id || 'local');
+      }
     }
-    state.user = { name, handle, avatar: '🎰', viaTelegram: true };
-    finishLogin();
-    toast('Вход выполнен через Telegram');
+    const id = 'tg:' + uid;
+    const all = readAccounts();
+    if (!all[id]) {
+      all[id] = { profile: { name, handle, avatar: '🎰', viaTelegram: true }, data: snapshot() };
+      writeAccounts(all);
+    }
+    const acc = all[id];
+    acc.profile.name = name; acc.profile.handle = handle;
+    writeAccounts(all);
+    loadInto(id, acc.profile, acc.data);
+    toast('С возвращением, ' + name);
   };
 
   window.loginDemo = function(){
-    state.user = { name: 'Гость', handle: '@demo_player', avatar: '🎲', viaTelegram: false };
+    state.user = { id: null, name: 'Гость', handle: '@demo_player', avatar: '🎲', viaTelegram: false };
     finishLogin();
+    toast('Гостевой режим — прогресс не сохранится');
   };
+
+  async function submitNick(mode){
+    const nick = ($('obNick').value || '').trim();
+    const pass = $('obPass').value || '';
+    obError('');
+
+    if (nick.length < 3) return obError('Ник — минимум 3 символа');
+    if (!/^[a-zA-Z0-9_]+$/.test(nick)) return obError('Ник: латиница, цифры и _');
+    if (pass.length < 6) return obError('Пароль — минимум 6 символов');
+    if (!HAS_STORE) return obError('Хранилище недоступно — вход по нику невозможен');
+    if (!(window.crypto && crypto.subtle)) {
+      // Never fall back to storing the password as text.
+      return obError('Браузер не даёт безопасно захешировать пароль');
+    }
+
+    const id = 'user:' + nick.toLowerCase();
+    const all = readAccounts();
+    const acc = all[id];
+
+    try {
+      if (mode === 'register') {
+        if (acc) return obError('Такой ник уже занят');
+        const salt = randomSalt();
+        const hash = await hashPassword(pass, salt);
+        all[id] = {
+          salt, hash,
+          profile: { name: nick, handle: '@' + nick, avatar: '🍒', viaTelegram: false },
+          data: snapshot(),
+        };
+        writeAccounts(all);
+        loadInto(id, all[id].profile, all[id].data);
+        toast('Аккаунт создан');
+      } else {
+        if (!acc) return obError('Аккаунт не найден — нажми «Создать»');
+        const hash = await hashPassword(pass, acc.salt);
+        if (!sameHash(hash, acc.hash)) return obError('Неверный пароль');
+        loadInto(id, acc.profile, acc.data);
+        toast('С возвращением, ' + acc.profile.name);
+      }
+    } catch(e) {
+      obError('Не удалось войти. Попробуй ещё раз.');
+      return;
+    }
+    $('obPass').value = '';
+  }
+
+  function restoreSession(){
+    if (!HAS_STORE) return false;
+    let id = null;
+    try { id = localStorage.getItem(SESSION_KEY); } catch(e){ return false; }
+    if (!id) return false;
+    const acc = readAccounts()[id];
+    if (!acc) return false;
+    loadInto(id, acc.profile, acc.data);
+    return true;
+  }
 
   function finishLogin(){
     $('profileName').textContent = state.user.name;
@@ -1592,7 +1811,11 @@
   }
 
   window.logout = function(){
+    saveProgress();                       // bank the balance before dropping the session
+    if (HAS_STORE) { try { localStorage.removeItem(SESSION_KEY); } catch(e){} }
     state.user = null;
+    obError('');
+    const p = $('obPass'); if (p) p.value = '';
     $('onboard').classList.remove('hidden');
     go('home');
   };
@@ -1641,7 +1864,9 @@
     // A verified Telegram user is already identified; don't ask them to log in.
     // NOTE: initDataUnsafe is display-only and trusted here purely because this
     // build is a demo. Anything money-related must verify initData server-side.
-    if (detectTelegram()) {
+    // Only when nobody is signed in: a restored nickname session must not be
+    // yanked out from under the player just because we are inside Telegram.
+    if (detectTelegram() && !state.user) {
       try { window.loginTelegram(); } catch(e){}
     }
   }
@@ -1654,7 +1879,21 @@
     renderStats();
     renderDaily();
     renderFaq();
+
+    const form  = $('obForm');
+    const regBtn = $('obReg');
+    if (form)   form.addEventListener('submit', (e) => { e.preventDefault(); submitNick('login'); });
+    if (regBtn) regBtn.addEventListener('click', () => submitNick('register'));
+
+    // A restored session must win over the onboarding screen, but Telegram
+    // still gets to identify the user it already knows.
+    const restored = restoreSession();
     initTelegram();
+    if (restored && !detectTelegram()) toast('С возвращением, ' + state.user.name);
+
+    // Mini apps are killed without warning; don't rely on the debounce alone.
+    window.addEventListener('pagehide', saveProgress);
+    document.addEventListener('visibilitychange', () => { if (document.hidden) saveProgress(); });
   }
   init();
 
@@ -1708,7 +1947,11 @@
     return m;
   }
 
-  let balance = 1000;
+  // Seed from the shell, never assume 1000: the shell has already restored the
+  // saved account by the time this runs, and pushing a default back at it wiped
+  // the player's balance on every reload.
+  let balance = (window.__SHELL__ && typeof window.__SHELL__.getBalance === 'function')
+    ? window.__SHELL__.getBalance() : 1000;
   let denomIndex = 0;
   let stake = 0;
   let phase = 'idle';        // idle | digging | over
@@ -1980,7 +2223,11 @@
   const HOUSE_EDGE = 0.04;      // share of rounds that bust instantly at 1.00
   const MAX_MULT = 100;
 
-  let balance = 1000;
+  // Seed from the shell, never assume 1000: the shell has already restored the
+  // saved account by the time this runs, and pushing a default back at it wiped
+  // the player's balance on every reload.
+  let balance = (window.__SHELL__ && typeof window.__SHELL__.getBalance === 'function')
+    ? window.__SHELL__.getBalance() : 1000;
   let denomIndex = 0;
   let stake = 0;
   let phase = 'idle';           // idle | flying | over
@@ -2429,7 +2676,11 @@
   }
 
   let segments = buildSegments();
-  let balance = 1000;
+  // Seed from the shell, never assume 1000: the shell has already restored the
+  // saved account by the time this runs, and pushing a default back at it wiped
+  // the player's balance on every reload.
+  let balance = (window.__SHELL__ && typeof window.__SHELL__.getBalance === 'function')
+    ? window.__SHELL__.getBalance() : 1000;
   // --- Shell integration (single-file): sync balance with the host app ---
   if (window.__SHELL__ && typeof window.__SHELL__.getBalance === 'function') {
     balance = window.__SHELL__.getBalance();
