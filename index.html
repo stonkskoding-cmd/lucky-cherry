@@ -726,6 +726,42 @@
     35% { opacity: 1; } 45% { opacity: 0.5; } 60% { opacity: 1; } 100% { opacity: 1; }
   }
 #rouletteGame .center-display.flicker .cd-value{ animation: neonFlicker 0.7s steps(2, end); }
+/* ---- Coin flip bonus: sits over the wheel like the slot-boost overlay ---- */
+#rouletteGame .coinflip{
+    position: absolute; inset: 3%; border-radius: 22px; z-index: 9;
+    background: linear-gradient(165deg, #14213d, #0a1024 55%, #05070f);
+    border: 5px solid var(--gold);
+    box-shadow: 0 24px 60px -8px rgba(0,0,0,0.85), inset 0 0 30px rgba(0,0,0,0.55), 0 0 44px 6px rgba(240,198,116,0.35);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 10px; padding: 12px;
+    opacity: 0; pointer-events: none; transform: scale(0.9);
+    transition: opacity 0.25s ease, transform 0.25s ease;
+  }
+#rouletteGame .coinflip.active{ opacity: 1; pointer-events: auto; transform: scale(1); }
+#rouletteGame .cf-title{ font-family: var(--serif); font-weight: 700; font-size: 15px; letter-spacing: 0.12em;
+    color: var(--gold-bright); text-shadow: 0 0 10px rgba(240,198,116,0.7); }
+#rouletteGame .cf-odds{ display: flex; gap: 8px; width: 100%; justify-content: center; }
+#rouletteGame .cf-odd{ flex: 1 1 0; max-width: 96px; border-radius: 10px; padding: 5px 4px; text-align: center;
+    border: 1px solid rgba(255,255,255,0.18); }
+#rouletteGame .cf-odd span{ display: block; font-size: 8px; letter-spacing: 0.08em; opacity: 0.85; }
+#rouletteGame .cf-odd b{ font-family: var(--serif); font-size: 16px; }
+#rouletteGame .cf-odd.red{ background: linear-gradient(160deg, #7a1420, #3a060c); color: #ffd9dd; }
+#rouletteGame .cf-odd.blue{ background: linear-gradient(160deg, #143d7a, #061a3a); color: #d9e8ff; }
+#rouletteGame .cf-odd.winner{ outline: 2px solid var(--gold-bright); box-shadow: 0 0 16px -2px rgba(240,198,116,0.8); }
+
+#rouletteGame .cf-coin-wrap{ perspective: 600px; display: grid; place-items: center; flex: 1 1 auto; min-height: 0; }
+#rouletteGame .cf-coin{ position: relative; width: 76px; height: 76px; transform-style: preserve-3d;
+    will-change: transform; }
+#rouletteGame .cf-face{ position: absolute; inset: 0; border-radius: 50%; backface-visibility: hidden;
+    border: 3px solid rgba(255,255,255,0.35); box-shadow: inset 0 3px 10px rgba(255,255,255,0.25); }
+#rouletteGame .cf-face.red{ background: radial-gradient(circle at 35% 30%, #ff6b7a, #8a1420 70%); }
+#rouletteGame .cf-face.blue{ background: radial-gradient(circle at 35% 30%, #6b9bff, #143d8a 70%); transform: rotateY(180deg); }
+/* Long spin, then the JS parks it on a face by setting a final rotateY. */
+#rouletteGame .cf-coin.tossing{ animation: cfToss 0.5s linear infinite; }
+  @keyframes cfToss { from { transform: rotateY(0deg); } to { transform: rotateY(360deg); } }
+#rouletteGame .cf-coin.settled{ transition: transform 0.7s cubic-bezier(.2,.9,.3,1.2); }
+#rouletteGame .cf-sub{ font-size: 12px; color: #ffe9b0; text-align: center; min-height: 16px; font-weight: 600; }
+
 #rouletteGame /* ---- Slot machine overlay: bright casino-style with real reel scroll ---- */
   .slot-machine{
     position: absolute; inset: 3%; border-radius: 22px;
@@ -1197,6 +1233,21 @@
     <div class="center-display" id="centerDisplay">
       <div class="cd-value" id="cdValue">?</div>
       <div class="cd-label" id="cdLabel">жми крути</div>
+    </div>
+
+    <div class="coinflip" id="coinFlip">
+      <div class="cf-title">МОНЕТКА</div>
+      <div class="cf-odds">
+        <div class="cf-odd red"><span>КРАСНАЯ</span><b id="cfRedMult">×2</b></div>
+        <div class="cf-odd blue"><span>СИНЯЯ</span><b id="cfBlueMult">×2</b></div>
+      </div>
+      <div class="cf-coin-wrap">
+        <div class="cf-coin" id="cfCoin">
+          <div class="cf-face red" id="cfFaceRed"></div>
+          <div class="cf-face blue" id="cfFaceBlue"></div>
+        </div>
+      </div>
+      <div class="cf-sub" id="cfSub">Подбрасываем…</div>
     </div>
 
     <div class="slot-machine" id="slotMachine">
@@ -3233,6 +3284,64 @@
     });
   }
 
+  // ---- Coin flip bonus ----------------------------------------------------
+  // Two multipliers are drawn around the segment's base value and pinned to a
+  // side; the coin decides which one pays. Both sides are shown before the toss
+  // so the player sees the real odds rather than a number appearing after.
+  const CF_SPREAD = [0.4, 0.7, 1.0, 1.5, 2.2, 3.0];
+
+  function coinflipMults(base){
+    const pick = () => Math.max(2, Math.round(base * CF_SPREAD[Math.floor(Math.random() * CF_SPREAD.length)]));
+    let a = pick(), b = pick();
+    if (a === b) b = Math.max(2, Math.round(b * 1.6));
+    return { red: a, blue: b };
+  }
+
+  function runCoinflip(base, onDone){
+    const coin = document.getElementById('cfCoin');
+    const sub  = document.getElementById('cfSub');
+    const panel = document.getElementById('coinFlip');
+    const redEl = document.getElementById('cfRedMult');
+    const blueEl = document.getElementById('cfBlueMult');
+    // Decorative element missing must never strand the round — the same defect
+    // that deadlocked the panel once already.
+    if (!coin || !panel || !redEl || !blueEl) { onDone(base); return; }
+
+    const { red, blue } = coinflipMults(base);
+    redEl.textContent = '×' + red;
+    blueEl.textContent = '×' + blue;
+    panel.querySelectorAll('.cf-odd').forEach(o => o.classList.remove('winner'));
+
+    const isRed = Math.random() < 0.5;
+    panel.classList.add('active');
+    sub.textContent = 'Подбрасываем…';
+    coin.classList.remove('settled');
+    coin.style.transform = '';
+    coin.classList.add('tossing');
+
+    // Timers, not the frame loop: a backgrounded mini app must still resolve.
+    setTimeout(() => {
+      coin.classList.remove('tossing');
+      coin.classList.add('settled');
+      // Several full turns, then park on the winning face.
+      coin.style.transform = `rotateY(${360 * 4 + (isRed ? 0 : 180)}deg)`;
+      const won = isRed ? red : blue;
+      sub.textContent = (isRed ? 'Красная' : 'Синяя') + ' — ×' + won + '!';
+      panel.querySelector('.cf-odd.' + (isRed ? 'red' : 'blue')).classList.add('winner');
+      setTimeout(() => {
+        panel.classList.remove('active');
+        onDone(won);
+      }, 1400);
+    }, 1800);
+  }
+
+  // Bonus segment -> its mini game. Each takes the segment's base value and
+  // calls back with the multiplier that actually pays. Cash Hunt (jackpot) and
+  // Pachinko (rain) still settle at their base value until they are built.
+  const BONUS_GAMES = {
+    treasure: runCoinflip,
+  };
+
   function runSlotMachine(onDone){
     slotMachine.classList.add('active');
     slotSub.textContent = 'Крутим барабаны…';
@@ -3456,7 +3565,23 @@
       return;
     }
 
-    const payout = stake * effectiveValue;
+    // A bonus segment the player actually backed opens its mini game, which
+    // decides the multiplier. Without a stake there is nothing to play for, so
+    // it settles straight away.
+    if (BONUS_GAMES[seg.key] && stake > 0) {
+      BONUS_GAMES[seg.key](effectiveValue, (finalValue) => {
+        settleRound(seg, opt, stake * finalValue, roundBets, chainRemaining, isChainedFreeSpin);
+      });
+      return;
+    }
+
+    settleRound(seg, opt, stake * effectiveValue, roundBets, chainRemaining, isChainedFreeSpin);
+  }
+
+  // One exit path for every round, mini game or not: credit, record, continue a
+  // free-spin chain or end. Keeping this in one place is what stops a branch
+  // from leaving `spinning` true and deadlocking the panel.
+  function settleRound(seg, opt, payout, roundBets, chainRemaining, isChainedFreeSpin){
     balance += payout;
     renderBalance();
 
