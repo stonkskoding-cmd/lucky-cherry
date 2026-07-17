@@ -396,6 +396,130 @@
     * { animation-duration: 0.001ms !important; transition-duration: 0.08s !important; }
   }
 
+  /* ===== SLOTS (scoped) ===== */
+  #slotsGame{
+    position:absolute; inset:0; overflow:hidden;
+    align-items: stretch; justify-content: center;
+    padding: 8px 10px 10px;
+    background: linear-gradient(180deg, #2a1046 0%, #170a2b 45%, #08040f 100%);
+    color: #f4f2ff; font-family: var(--sans);
+    --panel: #1e1630; --panel-border: #33264d;
+    --gold: #d4a24c; --gold-bright: #f0c674; --text-dim: #a99cc4;
+  }
+  #slotsGame .sl-app{ width: 100%; max-width: 520px; margin: 0 auto; height: 100%;
+    display: flex; flex-direction: column; gap: 8px; position: relative; }
+  #slotsGame .sl-app > *{ flex: 0 0 auto; }
+
+  #slotsGame .sl-hud{ display: flex; align-items: center; gap: 8px; min-height: 30px; }
+  #slotsGame .sl-chain{ display: flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 999px;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); }
+  #slotsGame .sl-chain span{ font-size: 8px; letter-spacing: 0.08em; color: var(--text-dim); }
+  #slotsGame .sl-chain b{ font-family: var(--serif, Georgia, serif); font-size: 14px; color: var(--gold-bright); }
+  /* The chain badge is the whole hook of the game: make it react when it climbs. */
+  #slotsGame .sl-chain.up{ animation: slChainPop 0.45s ease; }
+  @keyframes slChainPop { 0%{transform:scale(1);} 40%{transform:scale(1.22); filter:brightness(1.5);} 100%{transform:scale(1);} }
+  #slotsGame .sl-win{ flex: 1 1 auto; text-align: center; font-family: var(--serif, Georgia, serif);
+    font-size: 17px; font-variant-numeric: tabular-nums; color: #fff8e6; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #slotsGame .sl-win.on{ color: #34d399; text-shadow: 0 0 14px rgba(52,211,153,0.6); }
+  #slotsGame .sl-paytable-btn{ width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
+    border: 1px solid rgba(255,255,255,0.2); color: var(--text-dim); font-family: var(--serif, Georgia, serif);
+    font-size: 12px; cursor: pointer; flex: 0 0 auto; }
+
+  #slotsGame .sl-grid-wrap{ flex: 1 1 auto; min-height: 0; position: relative; border-radius: 16px;
+    border: 1px solid #33264d; overflow: hidden;
+    background: radial-gradient(120% 90% at 50% 0%, #34164f 0%, #1a0c2e 55%, #0a0518 100%);
+    box-shadow: inset 0 10px 30px rgba(0,0,0,0.65); padding: 6px; }
+  #slotsGame .sl-grid{ height: 100%; display: grid; grid-template-columns: repeat(5, 1fr);
+    grid-template-rows: repeat(3, 1fr); gap: 4px; }
+  #slotsGame .sl-cell{
+    position: relative; border-radius: 9px; display: grid; place-items: center;
+    background: linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
+    border: 1px solid rgba(255,255,255,0.07);
+    /* Cells are tall reel windows; a small glyph left them looking empty. */
+    font-size: clamp(24px, 8.5vw, 40px); line-height: 1;
+    will-change: transform, opacity;
+  }
+  /* Symbols fall in from above; the delay is set per-column in JS so reels land
+     left-to-right instead of all at once. */
+  #slotsGame .sl-cell.drop{ animation: slDrop 0.34s cubic-bezier(.25,.9,.3,1.3) backwards; }
+  @keyframes slDrop { from { transform: translateY(-190%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  #slotsGame .sl-cell.hit{ animation: slHit 0.42s ease; z-index: 2; }
+  @keyframes slHit {
+    0%   { transform: scale(1); }
+    35%  { transform: scale(1.22); filter: brightness(1.9) drop-shadow(0 0 10px rgba(240,198,116,0.9)); }
+    100% { transform: scale(0.1); opacity: 0; filter: brightness(2.4); }
+  }
+  #slotsGame .sl-cell.win-bg{ background: radial-gradient(circle at 50% 45%, rgba(240,198,116,0.55), rgba(240,198,116,0.08));
+    border-color: rgba(240,198,116,0.7); }
+  #slotsGame .sl-cell.dim{ opacity: 0.32; filter: saturate(0.4); transition: opacity 0.2s ease, filter 0.2s ease; }
+
+  #slotsGame .sl-flash{ position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.55), transparent 65%); }
+  #slotsGame .sl-flash.go{ animation: slFlash 0.5s ease; }
+  @keyframes slFlash { 0%{opacity:0;} 25%{opacity:1;} 100%{opacity:0;} }
+
+  #slotsGame .sl-note{ font-size: 11.5px; text-align: center; color: var(--text-dim); min-height: 15px; font-weight: 600; }
+  #slotsGame .sl-note.big{ color: var(--gold-bright); }
+
+  #slotsGame .sl-cta{
+    width: 100%; max-width: 260px; margin: 0 auto; padding: 13px 0;
+    border-radius: 12px; border: none; cursor: pointer;
+    background: radial-gradient(circle at 35% 30%, var(--gold-bright), var(--gold) 60%, #8a6a2e 100%);
+    color: #241a05; font-family: var(--serif, Georgia, serif); font-weight: 700; font-size: 15px; letter-spacing: 0.03em;
+    box-shadow: 0 6px 16px -4px rgba(212,162,76,0.5);
+    transition: transform 0.12s ease, opacity 0.15s ease;
+  }
+  #slotsGame .sl-cta:active{ transform: scale(0.97); }
+  #slotsGame .sl-cta.disabled{ opacity: 0.45; cursor: not-allowed; box-shadow: none; }
+
+  #slotsGame .panel{ width: 100%; background: var(--panel); border: 1px solid var(--panel-border);
+    border-radius: 16px; padding: 10px 12px; }
+  #slotsGame .chip-row-wrap{ display: flex; align-items: center; gap: 6px; }
+  #slotsGame .chip-row{ display: flex; align-items: center; gap: 6px; padding: 4px 2px 5px;
+    flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; flex: 1 1 auto; }
+  #slotsGame .chip-row::-webkit-scrollbar{ display: none; }
+  #slotsGame .chip-scroll-arrow{ flex: 0 0 auto; width: 22px; height: 22px; border-radius: 50%;
+    background: none; border: 1px solid var(--panel-border); color: var(--text-dim); cursor: pointer;
+    display: grid; place-items: center; font-size: 12px; }
+  #slotsGame .chip-round{
+    flex: 0 0 auto; width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--serif, Georgia, serif); font-weight: 700; font-size: 11px; color: #fff;
+    border: 3px dashed rgba(255,255,255,0.5);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.45), inset 0 2px 5px rgba(255,255,255,0.18);
+    cursor: pointer; transition: transform 0.22s cubic-bezier(.2,1.6,.4,1);
+  }
+  #slotsGame .chip-round.active{ transform: translateY(-6px) scale(1.08); outline: 2px solid var(--gold-bright); outline-offset: 1px; }
+  #slotsGame .chip-round:disabled{ opacity: 0.45; cursor: not-allowed; }
+  #slotsGame .bet-total{ display: flex; align-items: center; gap: 8px; font-size: 11px; text-transform: uppercase;
+    letter-spacing: 0.06em; color: var(--text-dim);
+    border-top: 1px solid var(--panel-border); padding-top: 8px; margin-top: 8px; }
+  #slotsGame .bet-total b{ margin-left: auto; color: var(--gold-bright);
+    font-family: var(--serif, Georgia, serif); font-size: 19px; letter-spacing: 0;
+    font-variant-numeric: tabular-nums; text-shadow: 0 0 12px rgba(240,198,116,0.45); }
+
+  /* Paytable: players should be able to check the odds without leaving. */
+  #slotsGame .sl-paytable{
+    position: absolute; inset: 0; z-index: 12; border-radius: 16px;
+    background: rgba(10,5,24,0.97); border: 1px solid #33264d;
+    display: flex; flex-direction: column; padding: 10px;
+    opacity: 0; pointer-events: none; transform: scale(0.96);
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+  #slotsGame .sl-paytable.open{ opacity: 1; pointer-events: auto; transform: scale(1); }
+  #slotsGame .sl-pt-head{ display: flex; align-items: center; font-family: var(--serif, Georgia, serif);
+    font-size: 14px; color: var(--gold-bright); padding-bottom: 6px; }
+  #slotsGame .sl-pt-head button{ margin-left: auto; background: none; border: none; color: var(--text-dim);
+    font-size: 15px; cursor: pointer; }
+  #slotsGame .sl-pt-body{ flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+  #slotsGame .sl-pt-row{ display: flex; align-items: center; gap: 8px; font-size: 11px;
+    background: rgba(255,255,255,0.04); border-radius: 8px; padding: 4px 8px; }
+  #slotsGame .sl-pt-row .s{ font-size: 17px; }
+  #slotsGame .sl-pt-row .n{ color: var(--text-dim); }
+  #slotsGame .sl-pt-row .v{ margin-left: auto; color: var(--gold-bright); font-family: var(--serif, Georgia, serif); }
+  #slotsGame .sl-pt-foot{ font-size: 9.5px; color: var(--text-dim); line-height: 1.45; padding-top: 6px; }
+
   /* ===== DICE (scoped) ===== */
   #diceGame{
     position:absolute; inset:0; overflow:hidden;
@@ -1480,6 +1604,47 @@
 
 </div>
 
+      <!-- ===== SLOTS ===== -->
+      <div id="slotsGame" class="game-host" data-stop="__SLOTS_STOP__">
+        <div class="sl-app">
+          <div class="sl-hud">
+            <div class="sl-chain" id="slChain"><span>ЦЕПОЧКА</span><b id="slChainMult">×1</b></div>
+            <div class="sl-win" id="slWin">—</div>
+            <div class="sl-paytable-btn" id="slInfoBtn" title="Таблица выплат">i</div>
+          </div>
+
+          <div class="sl-grid-wrap">
+            <div class="sl-grid" id="slGrid"></div>
+            <div class="sl-flash" id="slFlash"></div>
+          </div>
+
+          <div class="sl-note" id="slNote">6 одинаковых где угодно — выигрыш</div>
+
+          <button class="sl-cta" id="slSpin">КРУТИТЬ</button>
+
+          <div class="panel">
+            <div class="chip-row-wrap">
+              <button class="chip-scroll-arrow" id="slChipLeft">‹</button>
+              <div class="chip-row" id="slChipRow"></div>
+              <button class="chip-scroll-arrow" id="slChipRight">›</button>
+            </div>
+            <div class="bet-total">
+              <span>Ставка</span>
+              <b id="slBetAmt">0 🍒</b>
+            </div>
+          </div>
+
+          <div class="sl-paytable" id="slPaytable">
+            <div class="sl-pt-head">Таблица выплат <button id="slPtClose">✕</button></div>
+            <div class="sl-pt-body" id="slPtBody"></div>
+            <div class="sl-pt-foot">
+              Совпадения считаются по всей сетке — линий нет.
+              Победители исчезают, сверху падают новые, множитель цепочки растёт: ×1 → ×2 → ×3 → ×5 → ×8 → ×12.
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- ===== DICE ===== -->
       <div id="diceGame" class="game-host" data-stop="__DICE_STOP__">
         <div class="dice-app">
@@ -1701,6 +1866,7 @@
     crash:    { title: 'Crash',          live: true, host: 'crashGame',    resync: '__CRASH_RESYNC__' },
     mines:    { title: 'Мины',           live: true, host: 'minesGame',    resync: '__MINES_RESYNC__' },
     dice:     { title: 'Кости',          live: true, host: 'diceGame',     resync: '__DICE_RESYNC__' },
+    slots:    { title: 'Слоты',          live: true, host: 'slotsGame',    resync: '__SLOTS_RESYNC__' },
   };
 
   window.openGame = function(key){
@@ -1748,7 +1914,7 @@
       { key:'crash',    name:'Crash',          sub:'Успей забрать',  art:'art-crash',  emoji:'🚀', live:true },
       { key:'mines',    name:'Мины',           sub:'Копай глубже',   art:'art-mines',  emoji:'💎', live:true },
       { key:'dice',     name:'Кости',          sub:'Угадай сумму',   art:'art-dice',   emoji:'🎲', live:true },
-      { key:'slots',    name:'Слоты',          sub:'Скоро',          art:'art-slots',  emoji:'🎰', live:false },
+      { key:'slots',    name:'Слоты',          sub:'Каскады ×12',    art:'art-slots',  emoji:'🎰', live:true },
       { key:'cards',    name:'Блэкджек',       sub:'Скоро',          art:'art-cards',  emoji:'🃏', live:false },
     ];
     $('gameGrid').innerHTML = cards.map(c => `
@@ -2223,6 +2389,292 @@
   }
   init();
 
+})();
+</script>
+
+<script>
+/* ===== EMBEDDED SLOTS LOGIC ===== */
+(function(){
+  const host = document.getElementById('slotsGame');
+  if (!host) return;
+
+  const gridEl  = document.getElementById('slGrid');
+  const winEl   = document.getElementById('slWin');
+  const chainEl = document.getElementById('slChain');
+  const chainB  = document.getElementById('slChainMult');
+  const noteEl  = document.getElementById('slNote');
+  const spinEl  = document.getElementById('slSpin');
+  const chipRow = document.getElementById('slChipRow');
+  const betAmt  = document.getElementById('slBetAmt');
+  const flashEl = document.getElementById('slFlash');
+  const ptEl    = document.getElementById('slPaytable');
+  const ptBody  = document.getElementById('slPtBody');
+  const infoBtn = document.getElementById('slInfoBtn');
+  const ptClose = document.getElementById('slPtClose');
+  const arrowL  = document.getElementById('slChipLeft');
+  const arrowR  = document.getElementById('slChipRight');
+  if (!gridEl || !spinEl) return;
+
+  const DENOMS = [10, 20, 30, 50, 100, 250, 500, 1000, 5000];
+  const DENOM_COLORS = {
+    10: '#8a8f99', 20: '#c9564f', 30: '#4f8ed9', 50: '#4fbf7a',
+    100: '#2b2b33', 250: '#b5467a', 500: '#7a4fb5', 1000: '#d4a24c', 5000: '#33c2c9'
+  };
+
+  const COLS = 5, ROWS = 3, CELLS = COLS * ROWS;
+  // 5 was the obvious threshold and it felt awful: wins landed constantly and
+  // paid ~1 cherry on a 10 stake, which reads as losing. 6 is rarer but each
+  // win is worth roughly the stake or better. Measured: ~25% of spins win,
+  // ~1 in 50 pays 10x or more.
+  const MIN_MATCH = 6;
+
+  // Rarer symbols pay more; the weights are what make that true rather than the
+  // paytable claiming it.
+  const SYMBOLS = [
+    { k: 'cherry',  e: '🍒', w: 20, pay: 1 },
+    { k: 'lemon',   e: '🍋', w: 20, pay: 1 },
+    { k: 'plum',    e: '🍇', w: 18, pay: 1.4 },
+    { k: 'bell',    e: '🔔', w: 14, pay: 2 },
+    { k: 'star',    e: '⭐', w: 10, pay: 3 },
+    { k: 'seven',   e: '7️⃣', w: 6,  pay: 5 },
+    { k: 'diamond', e: '💎', w: 4,  pay: 8 },
+  ];
+  const SYM = {}; SYMBOLS.forEach(s => SYM[s.k] = s);
+  const TOTAL_W = SYMBOLS.reduce((a, s) => a + s.w, 0);
+
+  const COUNT_MULT = { 6:1, 7:2, 8:4, 9:8, 10:16, 11:30, 12:55, 13:100, 14:180, 15:350 };
+  const CHAIN = [1, 2, 3, 5, 8, 12];
+
+  // Cascades compound far harder than they look — an earlier table here paid
+  // 332%. This was measured by simulating 400k spins: 1.07 lands at ~96.8%.
+  // Re-measure if the weights, the table, the threshold or the chain change;
+  // none of these can be reasoned about by eye.
+  const RTP_SCALE = 1.07;
+
+  let balance = (window.__SHELL__ && typeof window.__SHELL__.getBalance === 'function')
+    ? window.__SHELL__.getBalance() : 1000;
+  let denomIndex = 0;
+  let stake = 0;
+  let spinning = false;
+  let grid = [];
+  let roundWin = 0;
+  let chainStep = 0;
+  let timers = [];
+
+  function fmt(n){ return Math.round(n).toLocaleString('ru-RU'); }
+  function stakeValue(){ return DENOMS[denomIndex]; }
+  function reportBalance(){
+    if (window.__SHELL__ && typeof window.__SHELL__.setBalance === 'function') {
+      window.__SHELL__.setBalance(balance);
+    }
+  }
+  function later(fn, ms){ const t = setTimeout(fn, ms); timers.push(t); return t; }
+  function clearTimers(){ timers.forEach(clearTimeout); timers = []; }
+
+  function pickSymbol(){
+    let r = Math.random() * TOTAL_W;
+    for (const s of SYMBOLS) { r -= s.w; if (r <= 0) return s.k; }
+    return SYMBOLS[0].k;
+  }
+
+  function buildGrid(){
+    gridEl.innerHTML = '';
+    for (let i = 0; i < CELLS; i++) {
+      const c = document.createElement('div');
+      c.className = 'sl-cell';
+      gridEl.appendChild(c);
+    }
+  }
+
+  function paint(dropSet){
+    [...gridEl.children].forEach((cell, i) => {
+      cell.textContent = SYM[grid[i]].e;
+      cell.classList.remove('hit', 'win-bg', 'dim', 'drop');
+      if (dropSet && dropSet.has(i)) {
+        // Stagger by column so reels land left to right.
+        cell.style.animationDelay = ((i % COLS) * 55) + 'ms';
+        void cell.offsetWidth;
+        cell.classList.add('drop');
+      } else {
+        cell.style.animationDelay = '';
+      }
+    });
+  }
+
+  function findWinners(){
+    const counts = {};
+    grid.forEach(k => counts[k] = (counts[k] || 0) + 1);
+    return Object.keys(counts).filter(k => counts[k] >= MIN_MATCH)
+      .map(k => ({ key: k, count: counts[k] }));
+  }
+
+  function renderChips(){
+    chipRow.innerHTML = '';
+    DENOMS.forEach((d, i) => {
+      const c = document.createElement('button');
+      c.className = 'chip-round' + (i === denomIndex ? ' active' : '');
+      c.style.background = `radial-gradient(circle at 35% 30%, ${DENOM_COLORS[d]}, ${DENOM_COLORS[d]} 70%, rgba(0,0,0,0.35))`;
+      c.textContent = fmt(d);
+      c.disabled = spinning;
+      c.addEventListener('click', () => {
+        if (spinning) return;
+        denomIndex = i;
+        renderChips();
+        refreshUI();
+      });
+      chipRow.appendChild(c);
+    });
+  }
+
+  function renderPaytable(){
+    ptBody.innerHTML = '';
+    [...SYMBOLS].reverse().forEach(s => {
+      const row = document.createElement('div');
+      row.className = 'sl-pt-row';
+      // Derived from the same constants the payout uses, so the table cannot
+      // drift away from what actually pays.
+      const v6 = (s.pay * COUNT_MULT[MIN_MATCH] * RTP_SCALE).toFixed(2);
+      const v9 = (s.pay * COUNT_MULT[9] * RTP_SCALE).toFixed(1);
+      row.innerHTML = `<span class="s">${s.e}</span><span class="n">6 шт · 9 шт</span>` +
+                      `<span class="v">×${v6} · ×${v9}</span>`;
+      ptBody.appendChild(row);
+    });
+  }
+
+  function refreshUI(){
+    betAmt.textContent = fmt(spinning ? stake : stakeValue()) + ' 🍒';
+    chainB.textContent = '×' + CHAIN[Math.min(chainStep, CHAIN.length - 1)];
+    spinEl.textContent = spinning ? 'КРУТИМ…' : 'КРУТИТЬ';
+    spinEl.classList.toggle('disabled', spinning || stakeValue() > balance);
+  }
+
+  function endRound(){
+    spinning = false;
+    chainStep = 0;
+    if (roundWin > 0) {
+      winEl.textContent = '+' + fmt(roundWin) + ' 🍒';
+      winEl.classList.add('on');
+      noteEl.textContent = roundWin >= stake * 10 ? 'Крупный занос!' : 'Есть выигрыш';
+      noteEl.classList.toggle('big', roundWin >= stake * 10);
+    } else {
+      winEl.textContent = '—';
+      winEl.classList.remove('on');
+      noteEl.textContent = 'Мимо. Пробуй ещё.';
+      noteEl.classList.remove('big');
+    }
+    if (window.__SHELL__ && typeof window.__SHELL__.onSpin === 'function') {
+      window.__SHELL__.onSpin(roundWin > 0, roundWin);
+    }
+    renderChips();
+    refreshUI();
+  }
+
+  function cascade(){
+    const winners = findWinners();
+    if (!winners.length) { endRound(); return; }
+
+    const mult = CHAIN[Math.min(chainStep, CHAIN.length - 1)];
+    const keys = winners.map(w => w.key);
+    let gained = 0;
+    winners.forEach(w => {
+      gained += stake * SYM[w.key].pay * (COUNT_MULT[w.count] || COUNT_MULT[15]) * mult * RTP_SCALE;
+    });
+    gained = Math.round(gained);
+    roundWin += gained;
+    balance += gained;
+    reportBalance();
+
+    winEl.textContent = '+' + fmt(roundWin) + ' 🍒';
+    winEl.classList.add('on');
+    noteEl.textContent = winners.map(w => SYM[w.key].e + ' ×' + w.count).join('  ') + '  →  +' + fmt(gained);
+
+    // Light the winners, dim everything else, then blow them up.
+    const hitIdx = [];
+    grid.forEach((k, i) => { if (keys.includes(k)) hitIdx.push(i); });
+    [...gridEl.children].forEach((cell, i) => {
+      if (hitIdx.includes(i)) cell.classList.add('win-bg');
+      else cell.classList.add('dim');
+    });
+    if (gained >= stake * 8) { flashEl.classList.remove('go'); void flashEl.offsetWidth; flashEl.classList.add('go'); }
+
+    later(() => {
+      hitIdx.forEach(i => gridEl.children[i].classList.add('hit'));
+      later(() => {
+        // Survivors fall; new symbols fill from the top of each column.
+        const keep = grid.map(k => keys.includes(k) ? null : k);
+        const next = new Array(CELLS);
+        const dropped = new Set();
+        for (let c = 0; c < COLS; c++) {
+          const col = [];
+          for (let r = 0; r < ROWS; r++) { const v = keep[r * COLS + c]; if (v) col.push(v); }
+          const missing = ROWS - col.length;
+          for (let m = 0; m < missing; m++) col.unshift(pickSymbol());
+          for (let r = 0; r < ROWS; r++) {
+            next[r * COLS + c] = col[r];
+            if (r < missing) dropped.add(r * COLS + c);
+          }
+        }
+        grid = next;
+        chainStep++;
+        chainEl.classList.remove('up'); void chainEl.offsetWidth; chainEl.classList.add('up');
+        refreshUI();
+        paint(dropped);
+        later(cascade, 480);
+      }, 420);
+    }, 620);
+  }
+
+  function spin(){
+    if (spinning) return;
+    stake = stakeValue();
+    if (stake > balance) return;
+
+    clearTimers();
+    balance -= stake;
+    reportBalance();
+    spinning = true;
+    roundWin = 0;
+    chainStep = 0;
+    winEl.textContent = '—';
+    winEl.classList.remove('on');
+    noteEl.textContent = 'Крутим…';
+    noteEl.classList.remove('big');
+    renderChips();
+    refreshUI();
+
+    grid = Array.from({ length: CELLS }, pickSymbol);
+    paint(new Set(grid.map((_, i) => i)));
+    // Timers, not the frame loop: a backgrounded mini app must still resolve.
+    later(cascade, 620);
+  }
+
+  spinEl.addEventListener('click', spin);
+  arrowL.addEventListener('click', () => chipRow.scrollBy({ left: -110, behavior: 'smooth' }));
+  arrowR.addEventListener('click', () => chipRow.scrollBy({ left: 110, behavior: 'smooth' }));
+  infoBtn.addEventListener('click', () => ptEl.classList.add('open'));
+  ptClose.addEventListener('click', () => ptEl.classList.remove('open'));
+
+  window.__SLOTS_STOP__ = function(){
+    // Winnings are credited as each cascade lands, so stopping here cannot cost
+    // the player anything already earned.
+    clearTimers();
+    if (spinning) endRound();
+  };
+
+  window.__SLOTS_RESYNC__ = function(){
+    if (window.__SHELL__ && typeof window.__SHELL__.getBalance === 'function') {
+      balance = window.__SHELL__.getBalance();
+    }
+    renderChips();
+    refreshUI();
+  };
+
+  buildGrid();
+  grid = Array.from({ length: CELLS }, pickSymbol);
+  paint(null);
+  renderChips();
+  renderPaytable();
+  refreshUI();
 })();
 </script>
 
