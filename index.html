@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Lucky Cherry — казино</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
@@ -31,7 +31,10 @@
     --nav-h: 66px;
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; margin: 0; }
+  /* touch-action: manipulation kills the double-tap-to-zoom gesture that was
+     zooming the whole app in and leaving the layout stretched after a game
+     closed; user-scalable=no in the meta covers browsers that honour it. */
+  html, body { height: 100%; margin: 0; touch-action: manipulation; -webkit-text-size-adjust: 100%; }
   body {
     background: var(--bg-0);
     color: var(--text);
@@ -380,6 +383,50 @@
   .game-view { position: absolute; inset: 0; z-index: 50; display: flex; flex-direction: column;
     background: var(--bg-0); transform: translateX(100%); transition: transform 0.34s cubic-bezier(.2,.9,.3,1); }
   .game-view.open { transform: translateX(0); }
+
+  /* Win celebration overlay — floats above the whole game area, non-interactive,
+     shown only while a win animates in. */
+  .winfx { position: absolute; inset: 0; z-index: 60; pointer-events: none;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; visibility: hidden; }
+  /* opacity:1 on the container — the card and coins fade themselves; without
+     this the parent stayed transparent and hid the whole celebration. */
+  .winfx.show { visibility: visible; opacity: 1; }
+  .winfx-card { position: relative; text-align: center; transform: scale(0.6); opacity: 0;
+    padding: 18px 30px; border-radius: 20px;
+    background: radial-gradient(120% 120% at 50% 0%, rgba(240,198,116,0.22), rgba(10,6,20,0.4) 70%);
+    box-shadow: 0 0 60px -8px rgba(240,198,116,0.65); }
+  .winfx.show .winfx-card { animation: winfxIn 1.7s cubic-bezier(.2,.9,.3,1.2) forwards; }
+  @keyframes winfxIn {
+    0%   { transform: scale(0.6);  opacity: 0; }
+    14%  { transform: scale(1.12); opacity: 1; }
+    28%  { transform: scale(1);    opacity: 1; }
+    80%  { transform: scale(1);    opacity: 1; }
+    100% { transform: scale(0.94) translateY(-14px); opacity: 0; }
+  }
+  .winfx-label { font-family: var(--display); font-weight: 700; font-size: 15px; letter-spacing: 0.22em;
+    color: var(--gold-bright); text-shadow: 0 0 14px rgba(240,198,116,0.8); }
+  .winfx-amount { margin-top: 4px; font-family: var(--display); font-weight: 800;
+    font-size: clamp(40px, 15vw, 68px); line-height: 1; color: #fff8e6;
+    font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 18px rgba(240,198,116,0.9), 0 0 42px rgba(255,150,40,0.6), 0 3px 10px rgba(0,0,0,0.6); }
+  .winfx-amount::after { content: ' 🍒'; font-size: 0.5em; }
+  .winfx-amount.big { color: #ffe08a; animation: winfxPulse 0.4s ease-in-out 3; }
+  @keyframes winfxPulse { 0%,100%{ filter: brightness(1);} 50%{ filter: brightness(1.6);} }
+  /* Coins burst outward from the centre; JS sets each one's flight vars. */
+  .winfx-coins { position: absolute; inset: 0; }
+  .winfx-coins b { position: absolute; left: 50%; top: 45%; font-size: 22px; will-change: transform, opacity;
+    animation: winfxCoin 1.15s cubic-bezier(.15,.6,.35,1) forwards; }
+  @keyframes winfxCoin {
+    0%   { transform: translate(-50%,-50%) scale(0.4); opacity: 0; }
+    18%  { opacity: 1; }
+    100% { transform: translate(calc(-50% + var(--cx)), calc(-50% + var(--cy))) rotate(var(--cr)) scale(1); opacity: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .winfx.show .winfx-card { animation-duration: 1.2s; }
+    .winfx-coins { display: none; }
+  }
+
   .game-topbar { flex: 0 0 auto; display: flex; align-items: center; gap: 12px; padding: calc(env(safe-area-inset-top) + 12px) 16px 12px; }
   .game-back { height: 38px; padding: 0 12px 0 8px; border-radius: 12px; display: inline-flex; align-items: center; gap: 4px;
     font-size: 14px; font-weight: 700; font-family: inherit; cursor: pointer; white-space: nowrap;
@@ -445,8 +492,12 @@
   #slotsGame .sl-reel{ position: relative; overflow: hidden; border-radius: 9px;
     background: linear-gradient(180deg, rgba(0,0,0,0.45), rgba(0,0,0,0.15));
     box-shadow: inset 0 8px 14px rgba(0,0,0,0.8), inset 0 -8px 14px rgba(0,0,0,0.8); }
-  #slotsGame .sl-strip{ position: absolute; left: 0; right: 0; top: 0; display: flex; flex-direction: column;
-    will-change: transform; }
+  /* height:100% so a resting cell's 33.33% resolves against the reel even while
+     the game is hidden at load; without it the strip was auto-height and every
+     cell collapsed to its glyph, stacking all three at the top. During a spin
+     the strip holds pixel-sized cells that overflow and are clipped — fine. */
+  #slotsGame .sl-strip{ position: absolute; left: 0; right: 0; top: 0; height: 100%;
+    display: flex; flex-direction: column; will-change: transform; }
   #slotsGame .sl-cell{
     position: relative; display: grid; place-items: center; flex: 0 0 auto;
     font-size: clamp(24px, 8.5vw, 40px); line-height: 1;
@@ -456,11 +507,15 @@
     background: linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.02));
     border: 1px solid rgba(255,255,255,0.06); z-index: -1; }
   /* Cascade refills still fall in; the delay is set per column in JS. */
-  #slotsGame .sl-cell.drop{ animation: slDrop 0.34s cubic-bezier(.25,.9,.3,1.3) backwards; }
+  #slotsGame .sl-cell.drop{ animation: slDrop 0.38s cubic-bezier(.22,.9,.3,1.15) backwards; }
   @keyframes slDrop { from { transform: translateY(-190%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-  /* The reel jolts as it lands, so a stop reads as a stop. */
-  #slotsGame .sl-reel.land{ animation: slLand 0.3s cubic-bezier(.2,1.8,.4,1); }
-  @keyframes slLand { 0%{ transform: translateY(0);} 40%{ transform: translateY(5px);} 100%{ transform: translateY(0);} }
+  /* The landing bump lives in the strip's own easing now. A separate transform
+     animation on the reel here fought the strip's transform and read as a twitch
+     at every stop. A brief glow marks the stop instead — no competing motion. */
+  #slotsGame .sl-reel.land::after{ content: ''; position: absolute; inset: 0; border-radius: 9px;
+    pointer-events: none; box-shadow: inset 0 0 0 2px rgba(240,198,116,0.55); z-index: 3;
+    animation: slLandGlow 0.34s ease-out forwards; }
+  @keyframes slLandGlow { from { opacity: 0.9; } to { opacity: 0; } }
 
   /* Scatters only land on the bottom row, so that row is permanently lit to
      tell the player where to watch. */
@@ -1560,6 +1615,15 @@
 
   <!-- ===== GAME VIEW ===== -->
   <div class="game-view" id="gameView">
+    <!-- Shared win celebration: every game reports its payout through
+         __SHELL__.onSpin, so the count-up lives here once instead of in each. -->
+    <div class="winfx" id="winfx" aria-hidden="true">
+      <div class="winfx-coins" id="winfxCoins"></div>
+      <div class="winfx-card">
+        <div class="winfx-label" id="winfxLabel">ВЫИГРЫШ</div>
+        <div class="winfx-amount" id="winfxAmount">0</div>
+      </div>
+    </div>
     <div class="game-topbar">
       <button class="game-back" onclick="closeGame()" aria-label="Выйти в меню"><span class="gb-arrow">‹</span> Выйти</button>
       <div class="game-title" id="gameTitle">Колесо Фортуны</div>
@@ -1975,6 +2039,58 @@
     });
   };
 
+  // ---- Shared win celebration -------------------------------------------
+  // Driven from onSpin, so every game gets the same count-up without wiring it
+  // in five places. rAF is fine here: it is pure decoration and gates nothing,
+  // and a fallback still lands the final number if the loop never runs.
+  let winfxRaf = null, winfxTimer = null;
+  function playWinFx(amount){
+    const el = document.getElementById('winfx');
+    const amtEl = document.getElementById('winfxAmount');
+    const coins = document.getElementById('winfxCoins');
+    if (!el || !amtEl || amount <= 0) return;
+
+    if (winfxRaf) cancelAnimationFrame(winfxRaf);
+    if (winfxTimer) clearTimeout(winfxTimer);
+
+    const big = amount >= 500;            // stake-agnostic "this is a lot" cue
+    amtEl.classList.toggle('big', big);
+
+    // Coin burst.
+    coins.innerHTML = '';
+    const n = big ? 14 : 8;
+    for (let i = 0; i < n; i++) {
+      const c = document.createElement('b');
+      const ang = (Math.PI * 2 * i) / n + (Math.random() - 0.5) * 0.5;
+      const dist = 90 + Math.random() * 70;
+      c.textContent = Math.random() < 0.5 ? '🍒' : '🪙';
+      c.style.setProperty('--cx', Math.cos(ang) * dist + 'px');
+      c.style.setProperty('--cy', Math.sin(ang) * dist + 'px');
+      c.style.setProperty('--cr', (Math.random() * 720 - 360) + 'deg');
+      c.style.animationDelay = (Math.random() * 120) + 'ms';
+      coins.appendChild(c);
+    }
+
+    // Restart the entrance animation cleanly on repeat calls.
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+
+    const dur = 750, start = performance.now();
+    amtEl.textContent = '0';
+    function step(now){
+      const t = Math.min((now - start) / dur, 1);
+      const eased = 1 - Math.pow(1 - t, 3);
+      amtEl.textContent = fmt(Math.round(amount * eased));
+      if (t < 1) winfxRaf = requestAnimationFrame(step);
+    }
+    winfxRaf = requestAnimationFrame(step);
+
+    // Clear when the CSS entrance (1.7s) has fully faded out.
+    winfxTimer = setTimeout(function(){
+      amtEl.textContent = fmt(amount);   // fallback if rAF never ran
+      el.classList.remove('show');
+    }, 1750);
+  }
+
   // ---- Bridge the embedded roulette to the shell state (single-file) ----
   window.__SHELL__ = {
     getBalance: function(){ return state.balance; },
@@ -1984,6 +2100,7 @@
       if (win) { state.stats.wins++; if (payout > state.stats.best) state.stats.best = payout; }
       renderStats();
       queueSave();
+      if (win && payout > 0) playWinFx(payout);
     }
   };
 
@@ -2631,6 +2748,9 @@
   function stripAt(c){ return gridEl.children[c].firstChild; }
 
   function paintStatic(dropSet){
+    // Percentages, resolved against the strip's height:100% — works even while
+    // the game is hidden at load, unlike a live pixel measurement which reads 0
+    // there and collapsed every cell to the top.
     for (let c = 0; c < COLS; c++) {
       const strip = stripAt(c);
       strip.style.transition = 'none';
@@ -2656,29 +2776,42 @@
     const reelH = reelAt(0).getBoundingClientRect().height;
     const cellH = reelH / ROWS;
     if (!cellH) { onDone(); return; }
-    const PAD = 14;
+    // More runway so symbols blur past long enough to read as a real reel, and
+    // a longer, gentler deceleration than before.
+    const PAD = 26;
     let landed = 0;
 
     for (let c = 0; c < COLS; c++) {
       const strip = stripAt(c);
       strip.innerHTML = '';
-      for (let i = 0; i < PAD; i++) {
-        const cell = makeCell(pickSymbol());
-        cell.style.height = cellH + 'px';
-        strip.appendChild(cell);
-      }
+      // Finals FIRST, then filler. The reel settles at translateY(0), which
+      // shows the top three cells — so the result must sit at the top, matching
+      // the resting paintStatic layout exactly (no snap, no wrong symbols). The
+      // old order left filler on top at rest, so every spin ended on random
+      // symbols and a win then jumped the grid into place — that was the twitch.
       for (let r = 0; r < ROWS; r++) {
         const cell = makeCell(grid[r * COLS + c]);
         cell.style.height = cellH + 'px';
         strip.appendChild(cell);
       }
+      for (let i = 0; i < PAD; i++) {
+        const cell = makeCell(pickSymbol());
+        cell.style.height = cellH + 'px';
+        strip.appendChild(cell);
+      }
 
+      // Start with the strip lifted so filler fills the window, then slide down
+      // to 0 — symbols fall and the result settles in from the top.
       strip.style.transition = 'none';
       strip.style.transform = 'translateY(' + (-PAD * cellH) + 'px)';
       void strip.offsetHeight;
 
-      const dur = 700 + c * 190;
-      strip.style.transition = 'transform ' + dur + 'ms cubic-bezier(.12,.7,.2,1)';
+      // Fast off the mark, then a long smooth glide to a clean stop — no
+      // overshoot, since the result sits at the very top and a bump past 0 would
+      // reveal empty space above it. Longer and staggered so reels stop
+      // left-to-right.
+      const dur = 1150 + c * 260;
+      strip.style.transition = 'transform ' + dur + 'ms cubic-bezier(.15,.72,.2,1)';
       strip.style.transform = 'translateY(0px)';
 
       (function(col){
