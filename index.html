@@ -374,7 +374,10 @@
     background: var(--glass); border: 1px solid var(--glass-border); color: var(--text); }
   .game-back:active { background: var(--glass-strong); transform: scale(0.96); }
   .game-back .gb-arrow { font-size: 20px; line-height: 1; margin-top: -2px; }
-  .game-title { font-weight: 800; font-size: 16px; }
+  /* Corners are reserved for exit and balance; the title takes what is left
+     and truncates rather than wrapping the topbar onto a second line. */
+  .game-title { font-weight: 800; font-size: 15px; min-width: 0; flex: 1 1 auto; text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .game-frame { flex: 1; border: none; width: 100%; background: var(--bg-0); }
 
   @media (prefers-reduced-motion: reduce) {
@@ -590,7 +593,11 @@
    can measure the rows without the wheel skewing the result. */
 #rouletteGame .app{ height: 100%; justify-content: flex-start; gap: 8px; }
 #rouletteGame .app > *{ flex: 0 0 auto; }
-#rouletteGame .ambient-bg{ position: fixed; inset: 0; z-index: 0; overflow: hidden; background: radial-gradient(ellipse at 50% -10%, #23233a 0%, var(--bg) 55%); }
+/* absolute, NOT fixed: .game-view is transformed, so a fixed inset:0 resolved
+   against .game-view — the topbar included — and this z-index:0 layer painted
+   over the static topbar, hiding the exit button and the balance. It must stay
+   inside #rouletteGame, which is the game area below the topbar. */
+#rouletteGame .ambient-bg{ position: absolute; inset: 0; z-index: 0; overflow: hidden; background: radial-gradient(ellipse at 50% -10%, #23233a 0%, var(--bg) 55%); pointer-events: none; }
 #rouletteGame .ambient-bg .orb{ position: absolute; border-radius: 50%; filter: blur(60px); opacity: 0.32; transition: background 0.7s ease; }
 #rouletteGame .ambient-bg .orb1{ width: 320px; height: 320px; top: -70px; left: -70px; background: radial-gradient(circle, var(--accent, #d4a24c), transparent 70%); animation: driftA 19s ease-in-out infinite; }
 #rouletteGame .ambient-bg .orb2{ width: 280px; height: 280px; bottom: -60px; right: -60px; background: radial-gradient(circle, var(--accent2, #7a4fb5), transparent 70%); animation: driftB 23s ease-in-out infinite; }
@@ -628,14 +635,21 @@
 #rouletteGame .balance-pill.pulse{ box-shadow: 0 0 0 4px rgba(240,198,116,0.25); }
 #rouletteGame .balance-pill .cherry{ font-size: 15px; }
 #rouletteGame .balance-pill .amt{ color: var(--gold-bright); font-family: var(--serif); }
+/* Out of flow: it is a transient notice, and while empty it was still holding
+   a row plus a gap of dead space above the history strip. Floated over the top
+   of the wheel it costs nothing when idle and cannot shift the layout when it
+   appears mid-round. */
 #rouletteGame .boost-banner{
+    position: absolute; top: 30px; left: 50%; z-index: 4;
     font-size: 11.5px; font-family: var(--serif); font-weight: 700;
     color: #241a05; background: linear-gradient(90deg, var(--gold-bright), var(--gold));
-    padding: 4px 12px; border-radius: 999px;
-    opacity: 0; transform: translateY(-4px); transition: opacity 0.3s ease, transform 0.3s ease;
-    pointer-events: none; max-width: 90%; text-align: center;
+    padding: 4px 12px; border-radius: 999px; white-space: nowrap;
+    opacity: 0; transform: translateX(-50%) translateY(-4px);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    pointer-events: none; max-width: 92%; text-align: center;
+    box-shadow: 0 6px 18px -4px rgba(240,198,116,0.5);
   }
-#rouletteGame .boost-banner.show{ opacity: 1; transform: translateY(0); }
+#rouletteGame .boost-banner.show{ opacity: 1; transform: translateX(-50%) translateY(0); }
 /* Square, and never larger than the space actually left over after the strip,
    the CTA and the betting panel have taken theirs. fitGameLayout() writes the
    real size; these values only cover the first paint. */
@@ -851,9 +865,16 @@
     border: 2px solid rgba(255,255,255,0.6);
     box-shadow: 0 3px 8px rgba(0,0,0,0.5);
   }
-#rouletteGame .bet-total{ display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-dim); border-top: 1px solid var(--panel-border); padding-top: 7px; margin-top: 7px; }
-#rouletteGame .bet-total b{ margin-left: auto; color: var(--gold-bright); font-size: 13px; }
-#rouletteGame .bet-total b{ color: var(--text); }
+/* The total is the number a player checks before committing, so it reads as a
+   value, not as fine print at the bottom of a panel. */
+#rouletteGame .bet-total{ display: flex; align-items: center; gap: 8px;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-dim);
+    border-top: 1px solid var(--panel-border); padding-top: 8px; margin-top: 8px; }
+#rouletteGame .bet-total b{ margin-left: auto; color: var(--gold-bright);
+    font-family: var(--serif); font-size: 19px; letter-spacing: 0; font-variant-numeric: tabular-nums;
+    text-shadow: 0 0 12px rgba(240,198,116,0.45); }
+#rouletteGame .bet-total.armed b{ animation: betPulse 0.35s ease; }
+  @keyframes betPulse { 0%{ transform: scale(1);} 45%{ transform: scale(1.18);} 100%{ transform: scale(1);} }
 #rouletteGame .slot-note{ margin-top: 10px; border-top: 1px solid var(--panel-border); padding-top: 9px; font-size: 10px; color: var(--text-dim); line-height: 1.4; }
 #rouletteGame .slot-note b{ color: var(--gold); }
 #rouletteGame .history-strip{
@@ -1116,7 +1137,6 @@
     <div class="game-topbar">
       <button class="game-back" onclick="closeGame()" aria-label="Выйти в меню"><span class="gb-arrow">‹</span> Выйти</button>
       <div class="game-title" id="gameTitle">Колесо Фортуны</div>
-      <div class="spacer" style="flex:1"></div>
       <div class="balance-chip glass"><span>🍒</span><span class="val" id="gameBalance">1 000</span></div>
     </div>
     <div class="game-frame" style="flex:1; overflow:hidden; position:relative;">
@@ -2451,6 +2471,12 @@
     });
   }
 
+  // What cashing out right now is worth — the number the player is deciding on.
+  function cashLabel(m){
+    const capped = Math.min(m, crashPoint);
+    return 'ЗАБРАТЬ ' + fmt(stake * capped) + ' 🍒';
+  }
+
   function refreshUI(){
     betAmtEl.textContent = fmt(phase === 'idle' ? stakeValue() : stake) + ' 🍒';
     if (phase === 'idle') {
@@ -2463,6 +2489,9 @@
         ctaEl.classList.remove('cashout');
         ctaEl.classList.add('disabled');
       } else {
+        // This branch set the classes but never the label, so the button still
+        // read "СТАВКА" for the whole flight.
+        ctaEl.textContent = cashLabel(multAt(Date.now() - startedAt));
         ctaEl.classList.add('cashout');
         ctaEl.classList.remove('disabled');
       }
@@ -2505,7 +2534,10 @@
     const elapsed = Date.now() - startedAt;
     const m = Math.min(multAt(elapsed), crashPoint);
     multEl.textContent = m.toFixed(2) + '×';
-    if (!cashedAt) noteEl.textContent = 'Забери до краша';
+    if (!cashedAt) {
+      noteEl.textContent = 'Забери до краша';
+      ctaEl.textContent = cashLabel(m);   // the payout climbs with the rocket
+    }
     draw(m);
     if (m >= crashPoint) { endRound(); return; }
     rafId = requestAnimationFrame(frame);
@@ -2866,10 +2898,21 @@
     btn.addEventListener('pointercancel', onUp);
   }
 
+  let lastShownTotal = 0;
   function refreshBetUI(){
     renderBetButtons();
     renderChipRow();
-    totalBetAmt.textContent = totalBet() + ' 🍒';
+    const total = totalBet();
+    totalBetAmt.textContent = total + ' 🍒';
+    // Pulse only when the number actually moved, so it catches the eye when a
+    // chip lands rather than flickering on every unrelated refresh.
+    const row = totalBetAmt.parentElement;
+    if (row && total !== lastShownTotal) {
+      row.classList.remove('armed');
+      void row.offsetWidth;
+      if (total > 0) row.classList.add('armed');
+      lastShownTotal = total;
+    }
     const disabled = spinning || totalBet() <= 0 || totalBet() > balance;
     spinBtn.classList.toggle('disabled', disabled);
     reshuffleBtn.disabled = spinning;
@@ -3457,9 +3500,13 @@
     // Measure the fixed rows without touching the wheel first: collapsing it and
     // re-reading in the same tick depends on a synchronous reflow landing, and
     // every row here is flex:0 0 auto, so none of them depend on the wheel.
+    // Absolutely positioned children (the boost banner) are out of flow: they
+    // neither take a row nor earn a gap, so counting them would shrink the
+    // wheel for space nothing occupies.
     const gap = parseFloat(getComputedStyle(app).rowGap) || 0;
-    let used = gap * Math.max(0, app.children.length - 1);
-    for (const el of app.children) {
+    const rows = [...app.children].filter(el => getComputedStyle(el).position !== 'absolute');
+    let used = gap * Math.max(0, rows.length - 1);
+    for (const el of rows) {
       if (el === wheelStage) continue;
       used += el.getBoundingClientRect().height;
     }
