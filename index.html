@@ -653,13 +653,10 @@
   /* Cascade refills still fall in; the delay is set per column in JS. */
   #slotsGame .sl-cell.drop{ animation: slDrop 0.38s cubic-bezier(.22,.9,.3,1.15) backwards; }
   @keyframes slDrop { from { transform: translateY(-190%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-  /* The landing bump lives in the strip's own easing now. A separate transform
-     animation on the reel here fought the strip's transform and read as a twitch
-     at every stop. A brief glow marks the stop instead — no competing motion. */
-  #slotsGame .sl-reel.land::after{ content: ''; position: absolute; inset: 0; border-radius: 9px;
-    pointer-events: none; box-shadow: inset 0 0 0 2px rgba(240,198,116,0.55); z-index: 3;
-    animation: slLandGlow 0.34s ease-out forwards; }
-  @keyframes slLandGlow { from { opacity: 0.9; } to { opacity: 0; } }
+  /* No glow on landing. It fired on every reel of every spin, so the machine
+     flashed just as hard on a loss as on a win — which is exactly backwards.
+     The stop is carried by the reel sound and the strip's own easing; the only
+     flashing left is on cells that actually paid. */
 
   /* Scatters only land on the bottom row, so that row is permanently lit to
      tell the player where to watch. */
@@ -679,19 +676,26 @@
   }
   #slotsGame .sl-cell.scatter::after{ background: radial-gradient(circle at 50% 50%, rgba(255,150,40,0.5), rgba(255,90,20,0.12));
     border-color: rgba(255,180,60,0.85); }
-  #slotsGame .sl-cell.hit{ animation: slHit 0.42s ease; z-index: 2; }
+  #slotsGame .sl-cell.hit{ animation: slHit 0.26s ease; z-index: 2; }
   @keyframes slHit {
     0%   { transform: scale(1); }
     35%  { transform: scale(1.22); filter: brightness(1.9) drop-shadow(0 0 10px rgba(240,198,116,0.9)); }
     100% { transform: scale(0.1); opacity: 0; filter: brightness(2.4); }
   }
+  /* Winning cells flash — this is the only flicker in the game, so it reads as
+     "you won" rather than as ambient decoration. Three quick pulses, done in
+     under a third of a second. */
   #slotsGame .sl-cell.win-bg{ background: radial-gradient(circle at 50% 45%, rgba(240,198,116,0.55), rgba(240,198,116,0.08));
-    border-color: rgba(240,198,116,0.7); }
+    border-color: rgba(240,198,116,0.7); animation: slWinBlink 0.32s steps(1, end) 3; }
+  @keyframes slWinBlink {
+    0%, 49%   { filter: brightness(1.85) drop-shadow(0 0 9px rgba(255,214,120,0.95)); }
+    50%, 100% { filter: brightness(1); }
+  }
   #slotsGame .sl-cell.dim{ opacity: 0.32; filter: saturate(0.4); transition: opacity 0.2s ease, filter 0.2s ease; }
 
   #slotsGame .sl-flash{ position: absolute; inset: 0; pointer-events: none; opacity: 0;
     background: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.55), transparent 65%); }
-  #slotsGame .sl-flash.go{ animation: slFlash 0.5s ease; }
+  #slotsGame .sl-flash.go{ animation: slFlash 0.32s ease; }
   @keyframes slFlash { 0%{opacity:0;} 25%{opacity:1;} 100%{opacity:0;} }
 
   #slotsGame .sl-note{ font-size: 11.5px; text-align: center; color: var(--text-dim); min-height: 15px; font-weight: 600; }
@@ -3251,10 +3255,6 @@
 
       (function(col){
         later(function(){
-          const reel = reelAt(col);
-          reel.classList.remove('land');
-          void reel.offsetWidth;
-          reel.classList.add('land');
           // Spread the five stops across the stereo field, left to right.
           if (window.__SFX__) window.__SFX__.play('reel', { pan: (col / (COLS - 1)) * 1.4 - 0.7 });
           landed++;
@@ -3468,9 +3468,9 @@
         chainEl.classList.remove('up'); void chainEl.offsetWidth; chainEl.classList.add('up');
         refreshUI();
         paintStatic(dropped);
-        later(cascade, 480);
-      }, 420);
-    }, 620);
+        later(cascade, 300);
+      }, 260);
+    }, 330);
   }
 
   function startSpin(isFree){
