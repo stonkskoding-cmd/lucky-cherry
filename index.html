@@ -798,7 +798,7 @@
     position:absolute; inset:0; overflow:hidden;
     align-items: stretch; justify-content: center;
     padding: 8px 10px 10px;
-    background: linear-gradient(180deg, #7ec0ee 0%, #a9d8f5 42%, #b98a5a 42%, #8a5a34 100%);
+    background: #7ec0ee url('assets/minedrop/fon.png') center top / cover no-repeat;
     color: #f4f2ff; font-family: var(--sans);
     --panel: #2a2035; --panel-border: #3d3050;
     --gold: #d4a24c; --gold-bright: #f0c674; --text-dim: #d9cbb6;
@@ -821,7 +821,7 @@
     box-shadow: inset 2px 2px 0 #0004, inset -2px -2px 0 #fff5; }
   #minedropGame .md-strip{ position: absolute; left: 0; right: 0; top: 0; height: 100%;
     display: flex; flex-direction: column; will-change: transform; }
-  #minedropGame .md-cell{ flex: 0 0 auto; height: 33.333%; background-size: 82% 82%;
+  #minedropGame .md-cell{ flex: 0 0 auto; height: 33.333%; background-size: contain;
     background-position: center; background-repeat: no-repeat; }
   #minedropGame .md-cell.slot{ background-color: #8b8b8b; box-shadow: inset 1px 1px 0 #0004, inset -1px -1px 0 #fff5; }
 
@@ -838,12 +838,23 @@
     40%  { transform: scale(1.12); filter: brightness(1.8); }
     100% { transform: scale(0.1); opacity: 0; filter: brightness(2.2); }
   }
-  #minedropGame .md-chest{ background-size: 100% 100%; background-repeat: no-repeat; }
+  #minedropGame .md-chest{ background-size: contain; background-position: center bottom; background-repeat: no-repeat; }
+  #minedropGame .md-block.shake{ animation: mdShake 0.16s ease; }
+  @keyframes mdShake { 0%,100%{ transform: translateX(0);} 25%{ transform: translateX(-2px) rotate(-2deg);} 75%{ transform: translateX(2px) rotate(2deg);} }
   #minedropGame .md-fall{ position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
-  #minedropGame .md-pick{ position: absolute; background-size: 100% 100%; background-repeat: no-repeat;
-    will-change: transform; }
-  #minedropGame .md-pick.swing{ animation: mdSwing 0.16s ease; }
-  @keyframes mdSwing { 0%{ transform: rotate(-24deg);} 60%{ transform: rotate(14deg);} 100%{ transform: rotate(0);} }
+  /* Pickaxe hovers over its target block (top set in JS) and hammers: each
+     strike swings it down onto the block with a spin, then it lifts back. */
+  #minedropGame .md-pick{ position: absolute; width: 18%; height: 16%;
+    background-size: contain; background-position: center; background-repeat: no-repeat;
+    transform: translate(-50%, -80%); transform-origin: 50% 90%; will-change: transform;
+    filter: drop-shadow(0 3px 3px rgba(0,0,0,0.4)); }
+  #minedropGame .md-pick.swing{ animation: mdSwing 0.16s cubic-bezier(.3,.1,.5,1); }
+  @keyframes mdSwing {
+    0%   { transform: translate(-50%, -105%) rotate(-38deg); }
+    45%  { transform: translate(-50%, -34%)  rotate(10deg); }
+    70%  { transform: translate(-50%, -34%)  rotate(6deg); }
+    100% { transform: translate(-50%, -80%)  rotate(-38deg); }
+  }
   /* Coin popping off a broken paying block. */
   #minedropGame .md-coin{ position: absolute; font-family: var(--serif, Georgia, serif); font-weight: 700;
     font-size: 13px; color: #fff3c4; text-shadow: 0 0 8px rgba(255,201,90,0.9), 0 1px 2px #000;
@@ -3693,130 +3704,36 @@
   };
   const COLS = 5, ROWS = 3;
 
-  // --- Sprites: procedural pixel art rendered to data URLs once, cached. The
-  // project ships as one file, so drawing textures in code beats bundling PNGs
-  // — and Minecraft textures are just small noisy colour fields plus a shape or
-  // two of accent pixels. ---
-  const spriteCache = {};
-  function makeCanvas(s){ const c = document.createElement('canvas'); c.width = c.height = s; return c; }
-  function rnd(a){ return a[(Math.random() * a.length) | 0]; }
+  // Real sprite sheets, sliced to individual PNGs and served as static assets —
+  // the user supplied the art, so this uses it rather than drawing look-alikes.
+  const ASSET = 'assets/minedrop/';
+  const url = function(name){ return "url('" + ASSET + name + ".png')"; };
+  const PICK_SPRITE = { 1: 'pick_wood', 2: 'pick_stone', 3: 'pick_iron', 4: 'pick_diamond' };
+  function pickBg(tier){ return url(PICK_SPRITE[tier]); }
 
-  function noiseFill(x, S, cols, y0, y1){
-    for (let yy = y0; yy < y1; yy++)
-      for (let xx = 0; xx < S; xx++) { x.fillStyle = rnd(cols); x.fillRect(xx, yy, 1, 1); }
-  }
-  function specks(x, S, cols, n, y0){
-    for (let i = 0; i < n; i++) {
-      const xx = 1 + ((Math.random() * (S - 2)) | 0);
-      const yy = (y0 || 1) + ((Math.random() * (S - (y0 || 1) - 1)) | 0);
-      x.fillStyle = rnd(cols);
-      x.fillRect(xx, yy, 1, 1);
-      if (Math.random() < 0.5) x.fillRect(xx + (Math.random() < 0.5 ? 1 : -1), yy, 1, 1);
-    }
-  }
-
-  const GREENS = ['#5aa02c', '#4f9127', '#66b032', '#478522'];
-  const DIRT   = ['#8a5a34', '#7a4e2c', '#966439', '#6d4526'];
-  const STONE  = ['#8f8f8f', '#7f7f7f', '#9c9c9c', '#767676'];
-
-  function blockURL(name){
-    if (spriteCache[name]) return spriteCache[name];
-    const S = 16, c = makeCanvas(S), x = c.getContext('2d');
-    if (name === 'grass') {
-      noiseFill(x, S, DIRT, 4, S);
-      noiseFill(x, S, GREENS, 0, 4);
-      // ragged grass edge
-      for (let xx = 0; xx < S; xx++) if (Math.random() < 0.5) { x.fillStyle = rnd(GREENS); x.fillRect(xx, 4, 1, 1); }
-    } else if (name === 'dirt') {
-      noiseFill(x, S, DIRT, 0, S); specks(x, S, ['#5c3c20', '#a06c40'], 20, 0);
-    } else if (name === 'stone') {
-      noiseFill(x, S, STONE, 0, S); specks(x, S, ['#6a6a6a', '#a6a6a6'], 16, 0);
-    } else if (name === 'redore') {
-      noiseFill(x, S, STONE, 0, S); specks(x, S, ['#c0392b', '#e05a4a', '#8f2418'], 22, 0);
-    } else if (name === 'goldore') {
-      noiseFill(x, S, STONE, 0, S); specks(x, S, ['#f0c020', '#ffd94a', '#c69410'], 20, 0);
-    } else if (name === 'diaore') {
-      noiseFill(x, S, STONE, 0, S); specks(x, S, ['#37d7d0', '#8ff0ea', '#26a6a0'], 20, 0);
-    } else if (name === 'chest') {
-      noiseFill(x, S, ['#7a4e2c', '#8a5a34', '#6d4526'], 0, S);
-      x.fillStyle = '#4a3218'; x.fillRect(0, 0, S, 1); x.fillRect(0, S - 1, S, 1);
-      x.fillRect(0, 6, S, 1); x.fillRect(0, 0, 1, S); x.fillRect(S - 1, 0, 1, S);
-      x.fillStyle = '#d9b25a'; x.fillRect(7, 6, 2, 4);      // lock plate
-      x.fillStyle = '#3a2a14'; x.fillRect(7, 8, 2, 1);      // keyhole
-    }
-    return (spriteCache[name] = c.toDataURL());
-  }
-
-  // Pickaxe: one shape, four metal palettes. Drawn from a hand mask so it reads
-  // cleanly at inventory size. S=stick, S/. handle; digits index the metal ramp.
-  const PICK_MASK = [
-    '....22221.......',
-    '...2333321......',
-    '..23300033......',
-    '.2330...0332....',
-    '.230.....0S3....',
-    '.20......SS.....',
-    '........SS......',
-    '.......SS.......',
-    '......SS........',
-    '.....SS.........',
-    '....SS..........',
-    '...SS...........',
-    '..SS............',
-    '.SS.............',
-    '.S..............',
-    '................'
-  ];
-  const METAL = {
-    1: ['#8a5a34', '#6d4526', '#a06c40', '#5c3c20'],  // wood — but head still metal-ish brown
-    2: ['#9a9a9a', '#7a7a7a', '#c0c0c0', '#5f5f5f'],  // stone
-    3: ['#e6e6e6', '#b8b8b8', '#ffffff', '#9a9a9a'],  // iron
-    4: ['#3fd7cf', '#26a6a0', '#8ff0ea', '#1c7c78']   // diamond
-  };
-  const STICK = ['#6b4a2b', '#4a3218'];
-  function pickURL(tier){
-    const key = 'pick' + tier;
-    if (spriteCache[key]) return spriteCache[key];
-    const S = 16, c = makeCanvas(S), x = c.getContext('2d');
-    const ramp = METAL[tier];
-    for (let yy = 0; yy < S; yy++) {
-      const row = PICK_MASK[yy];
-      for (let xx = 0; xx < S; xx++) {
-        const ch = row[xx];
-        if (ch === '.' || ch === undefined) continue;
-        if (ch === 'S') { x.fillStyle = STICK[0]; }
-        else if (ch === '0') { x.fillStyle = ramp[1]; }
-        else if (ch === '1') { x.fillStyle = ramp[2]; }
-        else if (ch === '2') { x.fillStyle = ramp[0]; }
-        else if (ch === '3') { x.fillStyle = ramp[3]; }
-        else continue;
-        x.fillRect(xx, yy, 1, 1);
-      }
-    }
-    // stick shading down the right edge of the handle
-    for (let yy = 4; yy < 15; yy++) { x.fillStyle = STICK[1]; }
-    return (spriteCache[key] = c.toDataURL());
-  }
-  function pickBg(tier){ return "url('" + pickURL(tier) + "')"; }
-  function blockBg(name){ return "url('" + blockURL(name) + "')"; }
-
-  // --- Math. The block stack is overburden (pay 0) down to ore. A pickaxe of
-  // tier T breaks up to T blocks it is allowed to mine (T >= block.tier) from
-  // the current depth, stopping at the first it cannot. Ore pays; scale was set
-  // by simulating 2M spins to ~96.2% RTP, hit rate ~32%. Re-simulate before
-  // adding the chest, enchant book or dynamite — none of it survives by eye. ---
+  // --- Mechanic: hits, not tiers. A pickaxe delivers `durability` strikes
+  // (wood 1 … diamond 4); a block needs `hard` strikes to break (dirt 1, stone
+  // 2, ore 3, obsidian 4). Strikes in a column accumulate down the stack, so
+  // reaching the paying ore takes real digging power. Overburden pays nothing;
+  // only ore does, and harder ore pays more. ---
   const STACK = [
-    { s: 'grass',   tier: 1, pay: 0 },
-    { s: 'dirt',    tier: 1, pay: 0 },
-    { s: 'stone',   tier: 2, pay: 0 },
-    { s: 'redore',  tier: 2, pay: 0 },
-    { s: 'goldore', tier: 3, pay: 6 },
-    { s: 'diaore',  tier: 4, pay: 22 }
-  ];
-  const DEPTH = STACK.length;
-  const PICK_W = [{ p: 0, w: 60 }, { p: 1, w: 18 }, { p: 2, w: 12 }, { p: 3, w: 7 }, { p: 4, w: 3 }];
+    { s: 'grass',    hard: 1, pay: 0 },
+    { s: 'dirt',     hard: 1, pay: 0 },
+    { s: 'stone',    hard: 2, pay: 0 },
+    { s: 'goldore',  hard: 3, pay: 3.5 },
+    { s: 'diaore',   hard: 3, pay: 7 },
+    { s: 'obsidian', hard: 4, pay: 24 }   // needs 14 cumulative strikes — the
+  ];                                       // enchant-book / chest tier, out of
+  const DEPTH = STACK.length;              // reach without it, drawn as the floor
+  const CUM = []; (function(){ let s = 0; for (const b of STACK) { s += b.hard; CUM.push(s); } })();
+
+  const PICK_W = [{ p: 0, w: 50 }, { p: 1, w: 18 }, { p: 2, w: 13 }, { p: 3, w: 8 }, { p: 4, w: 3 }];
   const PW_TOTAL = PICK_W.reduce(function(a, s){ return a + s.w; }, 0);
-  const PAY_SCALE = 0.223;
+  // Simulated over 3M spins to ~95.7% RTP, ~18% hit rate; every win is at least
+  // the gold-ore value, so there are no losing-feel micro-wins. Re-simulate
+  // before adding the enchant book, dynamite or chest — the hit model shifts
+  // sharply with each and cannot be reasoned about by eye.
+  const PAY_SCALE = 1.28;
 
   function rollPick(){
     let r = Math.random() * PW_TOTAL;
@@ -3826,10 +3743,7 @@
 
   let balance = (window.__SHELL__ && typeof window.__SHELL__.getBalance === 'function')
     ? window.__SHELL__.getBalance() : 1000;
-  let denomIndex = 0;
-  let stake = 0;
-  let busy = false;
-  let timers = [];
+  let denomIndex = 0, stake = 0, busy = false, timers = [];
 
   function fmt(n){ return Math.round(n).toLocaleString('ru-RU'); }
   function stakeValue(){ return DENOMS[denomIndex]; }
@@ -3839,7 +3753,6 @@
   function later(fn, ms){ const t = setTimeout(fn, ms); timers.push(t); return t; }
   function clearTimers(){ timers.forEach(clearTimeout); timers = []; }
 
-  // --- Build the static DOM once. ---
   function buildInventory(){
     invEl.innerHTML = '';
     for (let c = 0; c < COLS; c++) {
@@ -3852,7 +3765,6 @@
     }
   }
   function invStrip(c){ return invEl.children[c].firstChild; }
-
   function cellFor(tier){
     const d = document.createElement('div');
     d.className = 'md-cell slot';
@@ -3869,8 +3781,7 @@
     }
   }
 
-  // block field: 5 columns, 6 blocks each (grass..diamond) plus a chest row
-  let broken = [];   // broken[col][row] = true
+  let broken = [];
   function buildField(){
     fieldEl.innerHTML = '';
     broken = [];
@@ -3882,13 +3793,12 @@
       for (let r = 0; r < DEPTH; r++) {
         const b = document.createElement('div');
         b.className = 'md-block';
-        b.style.backgroundImage = blockBg(STACK[r].s);
-        b.dataset.col = c; b.dataset.row = r;
+        b.style.backgroundImage = url(STACK[r].s);
         col.appendChild(b);
       }
       const chest = document.createElement('div');
       chest.className = 'md-chest';
-      chest.style.backgroundImage = blockBg('chest');
+      chest.style.backgroundImage = url('chest');
       col.appendChild(chest);
       fieldEl.appendChild(col);
     }
@@ -3913,28 +3823,31 @@
     ctaEl.classList.toggle('disabled', busy || stakeValue() > balance);
   }
 
-  // Resolve a spin deterministically up front: which blocks each column breaks,
-  // and the payout. The animation then just plays this back — a dropped frame
-  // can never change what was won.
+  // Resolve up front: per column, the ordered strike list and the payout. The
+  // animation replays it, so a dropped frame changes nothing.
   function resolve(cells){
-    const plan = [];   // per column: { picks:[{tier, breaks:[rows], pay}], cleared }
+    const plan = [];
     let total = 0;
     for (let c = 0; c < COLS; c++) {
-      let depth = 0;
       const picks = [];
-      for (let r = 0; r < ROWS; r++) {
-        const t = cells[r][c];
-        if (t === 0) continue;
-        let power = t, pay = 0; const breaks = [];
-        while (depth < DEPTH && power > 0 && t >= STACK[depth].tier) {
-          breaks.push(depth);
-          pay += STACK[depth].pay * PAY_SCALE;
-          depth++; power--;
+      for (let r = 0; r < ROWS; r++) if (cells[r][c] > 0) picks.push(cells[r][c]);
+      const strikes = [];
+      let depth = 0, dmg = 0, pay = 0;
+      for (let i = 0; i < picks.length; i++) {
+        for (let h = 0; h < picks[i]; h++) {
+          if (depth >= DEPTH) { strikes.push({ tier: picks[i], row: depth, brk: false }); continue; }
+          dmg++;
+          if (dmg >= STACK[depth].hard) {
+            strikes.push({ tier: picks[i], row: depth, brk: true, pay: STACK[depth].pay });
+            pay += STACK[depth].pay * PAY_SCALE;   // total must carry the same scale the coins credit
+            depth++; dmg = 0;
+          } else {
+            strikes.push({ tier: picks[i], row: depth, brk: false });
+          }
         }
-        if (breaks.length) picks.push({ tier: t, breaks: breaks, pay: pay });
       }
-      total += picks.reduce(function(a, p){ return a + p.pay; }, 0);
-      plan.push({ picks: picks, cleared: depth >= DEPTH });
+      total += pay;
+      plan.push(strikes);
     }
     return { plan: plan, total: total };
   }
@@ -3945,81 +3858,55 @@
     coin.textContent = '+' + fmt(amount);
     coin.style.left = ((c + 0.5) / COLS * 100) + '%';
     coin.style.top = ((r + 0.5) / (DEPTH + 1) * 100) + '%';
-    coin.style.transform = 'translate(-50%,-50%)';
     fallEl.appendChild(coin);
     later(function(){ if (coin.parentNode) coin.remove(); }, 900);
   }
 
-  // One pickaxe: drop a sprite onto the column, swing, break its blocks, pay.
-  function dropPick(c, pick, onDone){
-    const topRow = pick.breaks[0];
-    const size = 100 / (DEPTH + 1);
+  const STRIKE_MS = 165;
+  // One column's strikes, hammered out with a bounce-and-spin per hit. The
+  // pickaxe hovers over the current top block; each strike swings it down, and
+  // on the strike that finishes a block the block shatters and pays.
+  function runColumn(c, strikes, onDone){
+    if (!strikes.length) { onDone(); return; }
+    const cellPct = 100 / (DEPTH + 1);
     const el = document.createElement('div');
     el.className = 'md-pick';
-    el.style.backgroundImage = pickBg(pick.tier);
-    el.style.width = (100 / COLS * 0.9) + '%';
-    el.style.height = (size * 0.9) + '%';
+    el.style.width = (100 / COLS * 0.92) + '%';
+    el.style.height = (cellPct * 1.0) + '%';
     el.style.left = ((c + 0.5) / COLS * 100) + '%';
-    el.style.top = '-16%';
-    el.style.transform = 'translate(-50%,-50%)';
-    el.style.transition = 'top 0.32s cubic-bezier(.4,0,.7,1)';
     fallEl.appendChild(el);
-    void el.offsetHeight;
-    el.style.top = ((topRow + 0.5) / (DEPTH + 1) * 100) + '%';
 
-    later(function(){
-      el.classList.add('swing');
-      // break each block this pickaxe mines, in quick succession
-      pick.breaks.forEach(function(row, i){
-        later(function(){
-          const b = blockEl(c, row);
-          if (b && !broken[c][row]) {
-            broken[c][row] = true;
-            b.classList.add('break');
-            if (STACK[row].pay > 0) {
-              const amt = STACK[row].pay * PAY_SCALE * stake;
-              balance += amt; reportBalance();
-              popCoin(c, row, amt);
-              if (window.__SFX__) window.__SFX__.play('chip');
-            } else if (window.__SFX__) {
-              window.__SFX__.play('reel', { pan: (c / (COLS - 1)) * 1.2 - 0.6 });
-            }
-          }
-          if (i === pick.breaks.length - 1) { el.remove(); onDone(); }
-        }, 90 + i * 120);
-      });
-      if (!pick.breaks.length) { el.remove(); onDone(); }
-    }, 340);
-  }
-
-  // Play a column's pickaxes one after another, then report done.
-  function runColumn(c, picks, onDone){
     let i = 0;
-    (function next(){
-      if (i >= picks.length) { onDone(); return; }
-      const p = picks[i++];
-      dropPick(c, p, function(){ later(next, 120); });
+    (function strike(){
+      if (i >= strikes.length) { later(function(){ if (el.parentNode) el.remove(); onDone(); }, 120); return; }
+      const s = strikes[i++];
+      el.style.backgroundImage = pickBg(s.tier);
+      el.style.top = ((s.row + 0.5) / (DEPTH + 1) * 100) + '%';   // hover over target
+      el.classList.remove('swing'); void el.offsetWidth; el.classList.add('swing');
+
+      later(function(){                                            // impact
+        const b = blockEl(c, s.row);
+        if (b && !broken[c][s.row]) {
+          if (s.brk) {
+            broken[c][s.row] = true;
+            b.classList.add('break');
+            if (window.__SFX__) window.__SFX__.play('boom');
+            if (s.pay > 0) {
+              const amt = s.pay * PAY_SCALE * stake;
+              balance += amt; reportBalance();
+              popCoin(c, s.row, amt);
+            }
+          } else {
+            b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
+            if (window.__SFX__) window.__SFX__.play('reel', { pan: (c / (COLS - 1)) * 1.2 - 0.6 });
+          }
+        }
+      }, STRIKE_MS * 0.55);
+
+      later(strike, STRIKE_MS);
     })();
   }
 
-  function settle(total, plan){
-    busy = false;
-    if (total > 0) {
-      noteEl.textContent = 'Добыто ' + fmt(total * stake) + ' 🍒';
-      noteEl.classList.add('win');
-    } else {
-      noteEl.textContent = 'Пусто. Копай ещё.';
-      noteEl.classList.remove('win');
-    }
-    if (window.__SHELL__ && typeof window.__SHELL__.onSpin === 'function') {
-      window.__SHELL__.onSpin(total > 0, total * stake);
-    }
-    renderChips();
-    refreshUI();
-  }
-
-  // Reel spin for the inventory, mirroring the slots reels: a tall strip scrolls
-  // and the three finals land at the top. Left-to-right stagger, then a callback.
   function spinReels(cells, onDone){
     const reelH = invEl.children[0].getBoundingClientRect().height;
     const cellH = reelH / ROWS;
@@ -4046,6 +3933,20 @@
     }
   }
 
+  function settle(total){
+    busy = false;
+    if (total > 0) {
+      noteEl.textContent = 'Добыто ' + fmt(total * stake) + ' 🍒';
+      noteEl.classList.add('win');
+    } else {
+      noteEl.textContent = 'Пусто. Копай ещё.';
+      noteEl.classList.remove('win');
+    }
+    if (window.__SHELL__ && typeof window.__SHELL__.onSpin === 'function') window.__SHELL__.onSpin(total > 0, total * stake);
+    renderChips();
+    refreshUI();
+  }
+
   function dig(){
     if (busy) return;
     stake = stakeValue();
@@ -4066,26 +3967,18 @@
     for (let r = 0; r < ROWS; r++) { const row = []; for (let c = 0; c < COLS; c++) row.push(rollPick()); cells.push(row); }
     const res = resolve(cells);
 
-    // Guarantee exactly one settle even if a step is lost.
     let settled = false;
-    const finish = function(){ if (settled) return; settled = true; clearTimeout(watchdog); settle(res.total, res.plan); };
-    const watchdog = setTimeout(finish, 9000); timers.push(watchdog);
+    const finish = function(){ if (settled) return; settled = true; clearTimeout(watchdog); settle(res.total); };
+    const watchdog = setTimeout(finish, 12000); timers.push(watchdog);
 
     spinReels(cells, function(){
       noteEl.textContent = 'Кирки за работу!';
-      let done = 0, active = 0;
-      let any = false;
-      for (let c = 0; c < COLS; c++) if (res.plan[c].picks.length) any = true;
-      if (!any) { finish(); return; }
+      let active = 0, done = 0;
+      for (let c = 0; c < COLS; c++) if (res.plan[c].length) active++;
+      if (!active) { finish(); return; }
       for (let c = 0; c < COLS; c++) {
-        const picks = res.plan[c].picks;
-        if (!picks.length) continue;
-        active++;
-        (function(col, pk){
-          later(function(){
-            runColumn(col, pk, function(){ done++; if (done === active) finish(); });
-          }, col * 160);
-        })(c, picks);
+        if (!res.plan[c].length) continue;
+        (function(col){ runColumn(col, res.plan[col], function(){ done++; if (done === active) finish(); }); })(c);
       }
     });
   }
@@ -4094,13 +3987,7 @@
   arrowL.addEventListener('click', function(){ chipRow.scrollBy({ left: -110, behavior: 'smooth' }); });
   arrowR.addEventListener('click', function(){ chipRow.scrollBy({ left: 110, behavior: 'smooth' }); });
 
-  window.__MINEDROP_STOP__ = function(){
-    // Winnings credit as blocks break, so stopping cannot cost anything earned.
-    clearTimers();
-    busy = false;
-    fallEl.innerHTML = '';
-    refreshUI();
-  };
+  window.__MINEDROP_STOP__ = function(){ clearTimers(); busy = false; fallEl.innerHTML = ''; refreshUI(); };
   window.__MINEDROP_RESYNC__ = function(){
     if (window.__SHELL__ && typeof window.__SHELL__.getBalance === 'function') balance = window.__SHELL__.getBalance();
     if (!busy) { buildField(); paintInv([[0,0,0,0,0],[0,0,0,0,0],[0,0,0,0,0]]); }
