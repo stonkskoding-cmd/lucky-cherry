@@ -3831,31 +3831,33 @@
 
   // Resolve up front: per column, the ordered strike list and the payout. The
   // animation replays it, so a dropped frame changes nothing.
+  // Resolve up front, grouped by pickaxe so the animation can play one item at
+  // a time. Each item is a pickaxe with the strikes it lands; a strike either
+  // damages the current top block or finishes it. Overburden pays nothing.
   function resolve(cells){
-    const plan = [];
+    const items = [];
     let total = 0;
     for (let c = 0; c < COLS; c++) {
       const picks = [];
       for (let r = 0; r < ROWS; r++) if (cells[r][c] > 0) picks.push(cells[r][c]);
-      const strikes = [];
-      let depth = 0, dmg = 0, pay = 0;
+      let depth = 0, dmg = 0;
       for (let i = 0; i < picks.length; i++) {
-        for (let h = 0; h < picks[i]; h++) {
-          if (depth >= DEPTH) { strikes.push({ tier: picks[i], row: depth, brk: false }); continue; }
+        const tier = picks[i], strikes = [];
+        for (let h = 0; h < tier; h++) {
+          if (depth >= DEPTH) { strikes.push({ row: DEPTH - 1, brk: false }); continue; }
           dmg++;
           if (dmg >= STACK[depth].hard) {
-            strikes.push({ tier: picks[i], row: depth, brk: true, pay: STACK[depth].pay });
-            pay += STACK[depth].pay * PAY_SCALE;   // total must carry the same scale the coins credit
+            strikes.push({ row: depth, brk: true, pay: STACK[depth].pay });
+            total += STACK[depth].pay * PAY_SCALE;
             depth++; dmg = 0;
           } else {
-            strikes.push({ tier: picks[i], row: depth, brk: false });
+            strikes.push({ row: depth, brk: false });
           }
         }
+        items.push({ col: c, tier: tier, strikes: strikes });
       }
-      total += pay;
-      plan.push(strikes);
     }
-    return { plan: plan, total: total };
+    return { items: items, total: total };
   }
 
   function popCoin(c, r, amount){
@@ -3868,48 +3870,98 @@
     later(function(){ if (coin.parentNode) coin.remove(); }, 900);
   }
 
-  const STRIKE_MS = 165;
-  // One column's strikes, hammered out with a bounce-and-spin per hit. The
-  // pickaxe hovers over the current top block; each strike swings it down, and
-  // on the strike that finishes a block the block shatters and pays.
-  function runColumn(c, strikes, onDone){
-    if (!strikes.length) { onDone(); return; }
-    const cellPct = 100 / (DEPTH + 1);
+  // Rough dominant colour per block, for the debris tint.
+  const DEBRIS = { grass:'#6b4a2b', dirt:'#7a4e2c', stone:'#8f8f8f', goldore:'#c9a227', redore:'#b53a2a', diaore:'#4bb6b0', obsidian:'#2a1846' };
+  function spawnParticles(c, row){
+    const cx = (c + 0.5) / COLS * 100, cy = (row + 0.5) / (DEPTH + 1) * 100;
+    const col = DEBRIS[STACK[row].s] || '#8a5a34';
+    for (let i = 0; i < 8; i++) {
+      const p = document.createElement('div');
+      p.className = 'md-particle';
+      p.style.background = col;
+      p.style.left = cx + '%'; p.style.top = cy + '%';
+      p.style.transform = 'translate(-50%,-50%)';
+      fallEl.appendChild(p);
+      const dx = (Math.random() * 2 - 1) * 34, dy = -(10 + Math.random() * 28);
+      void p.offsetHeight;
+      p.style.transition = 'transform 0.5s cubic-bezier(.2,.55,.4,1), opacity 0.5s ease';
+      p.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-50% + ' + dy + 'px)) rotate(' + Math.round(Math.random() * 360) + 'deg)';
+      p.style.opacity = '0';
+      later(function(){ if (p.parentNode) p.remove(); }, 540);
+    }
+  }
+
+  const yPct = function(row){ return ((row + 0.5) / (DEPTH + 1) * 100); };
+
+  // One pickaxe, hammered as a chained tween timeline (setTimeout-driven, so it
+  // survives backgrounding, unlike an rAF loop): fall in with a tilt, then per
+  // strike swing down hard, react the block, bounce up; finish by shrinking out.
+  function hammer(item, done){
+    const c = item.col;
     const el = document.createElement('div');
     el.className = 'md-pick';
-    el.style.width = (100 / COLS * 0.92) + '%';
-    el.style.height = (cellPct * 1.0) + '%';
+    el.style.width = (100 / COLS * 0.9) + '%';
+    el.style.height = (100 / (DEPTH + 1) * 1.05) + '%';
     el.style.left = ((c + 0.5) / COLS * 100) + '%';
+    const firstY = yPct(item.strikes[0].row);
+    el.style.transition = 'none';
+    el.style.top = '-16%';
+    el.style.transform = 'translate(-50%,-50%) rotate(-16deg)';
     fallEl.appendChild(el);
+    el.style.backgroundImage = pickBg(item.tier);
+    void el.offsetHeight;
 
-    let i = 0;
-    (function strike(){
-      if (i >= strikes.length) { later(function(){ if (el.parentNode) el.remove(); onDone(); }, 120); return; }
-      const s = strikes[i++];
-      el.style.backgroundImage = pickBg(s.tier);
-      el.style.top = ((s.row + 0.5) / (DEPTH + 1) * 100) + '%';   // hover over target
-      el.classList.remove('swing'); void el.offsetWidth; el.classList.add('swing');
+    // fall: EaseIn cubic, slight rotation, accelerating into the block
+    el.style.transition = 'top 0.17s cubic-bezier(.55,.06,.68,.19), transform 0.17s ease-in';
+    el.style.top = firstY + '%';
+    el.style.transform = 'translate(-50%,-66%) rotate(-6deg)';
 
-      later(function(){                                            // impact
-        const b = blockEl(c, s.row);
-        if (b && !broken[c][s.row]) {
-          if (s.brk) {
-            broken[c][s.row] = true;
-            b.classList.add('break');
+    let s = 0;
+    function strike(){
+      if (s >= item.strikes.length) {
+        el.style.transition = 'transform 0.12s ease, opacity 0.12s ease';
+        el.style.transform = 'translate(-50%,-66%) scale(0.9)';
+        el.style.opacity = '0';
+        later(function(){ if (el.parentNode) el.remove(); done(); }, 130);
+        return;
+      }
+      const st = item.strikes[s++];
+      el.style.top = yPct(st.row) + '%';
+      // impact: drive down + rotate ~25deg for a heavy hit
+      el.style.transition = 'transform 0.07s cubic-bezier(.45,0,.9,.35)';
+      el.style.transform = 'translate(-50%,-42%) rotate(25deg)';
+
+      later(function(){
+        const b = blockEl(c, st.row);
+        if (b && !broken[c][st.row]) {
+          if (st.brk) {
+            broken[c][st.row] = true;
+            spawnParticles(c, st.row);
+            b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
+            later(function(){ b.classList.add('break'); }, 55);
             if (window.__SFX__) window.__SFX__.play('boom');
-            if (s.pay > 0) {
-              const amt = s.pay * PAY_SCALE * stake;
-              balance += amt; reportBalance();
-              popCoin(c, s.row, amt);
-            }
+            if (st.pay > 0) { const amt = st.pay * PAY_SCALE * stake; balance += amt; reportBalance(); popCoin(c, st.row, amt); }
           } else {
             b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake');
             if (window.__SFX__) window.__SFX__.play('reel', { pan: (c / (COLS - 1)) * 1.2 - 0.6 });
           }
         }
-      }, STRIKE_MS * 0.55);
+        // bounce up
+        el.style.transition = 'transform 0.09s ease-out';
+        el.style.transform = 'translate(-50%,-80%) rotate(-8deg)';
+        later(strike, 105);
+      }, 78);
+    }
+    later(strike, 185);   // begin after the fall lands
+  }
 
-      later(strike, STRIKE_MS);
+  // Strictly sequential: the next pickaxe starts only after the previous one's
+  // whole timeline (and an 80–120ms pause) has finished.
+  function runItems(items, onDone){
+    let i = 0;
+    (function next(){
+      if (i >= items.length) { onDone(); return; }
+      hammer(items[i++], function(){ later(next, 100); });
     })();
   }
 
@@ -3975,17 +4027,12 @@
 
     let settled = false;
     const finish = function(){ if (settled) return; settled = true; clearTimeout(watchdog); settle(res.total); };
-    const watchdog = setTimeout(finish, 12000); timers.push(watchdog);
+    const watchdog = setTimeout(finish, 22000); timers.push(watchdog);
 
     spinReels(cells, function(){
+      if (!res.items.length) { finish(); return; }
       noteEl.textContent = 'Кирки за работу!';
-      let active = 0, done = 0;
-      for (let c = 0; c < COLS; c++) if (res.plan[c].length) active++;
-      if (!active) { finish(); return; }
-      for (let c = 0; c < COLS; c++) {
-        if (!res.plan[c].length) continue;
-        (function(col){ runColumn(col, res.plan[col], function(){ done++; if (done === active) finish(); }); })(c);
-      }
+      runItems(res.items, finish);
     });
   }
 
